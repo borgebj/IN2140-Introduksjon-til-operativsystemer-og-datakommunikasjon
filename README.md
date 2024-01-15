@@ -18,5 +18,5 @@ For å kompilere med makefile: <br> <br>
 | 1.  | `gcc #FILNAVN#.c -o #UTNAVN#` | (kompilering) |
 | 2.  | `./#OUTNAVN#`                 | (kjøring)     |
 
--o er flagg for å spesifisere "output" navn <br>
-gcc er kompilator for C/C++ (skaffet gjennomt mingw64)
+<b> -o </b> er flagg for å spesifisere "output" navn <br>
+<b> gcc </b> er kompilator for C/C++ (skaffet gjennomt mingw64)
