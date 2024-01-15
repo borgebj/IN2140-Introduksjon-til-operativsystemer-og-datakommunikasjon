@@ -3,7 +3,7 @@ Denne repositorien inneholder filer knyttet til IN2140 UiO. <br>
 Filer er sortert basert på bl.a. ukenummer
 
 <h2> C programmering </h2>
-makefile er filen brukt for å automatisere kompilering av C-programmene. <br>
+<b>Makefile</b> er filen brukt for å automatisere kompilering av C-programmene. <br>
 For å kompilere med makefile: <br> <br>
 
 |     |  |    |
