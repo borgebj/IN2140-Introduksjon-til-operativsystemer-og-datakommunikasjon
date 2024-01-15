@@ -7,6 +7,7 @@ Filer er sortert basert på bl.a. ukenummer
 
 
 <h3> Kompilering gjennom makefile </h3>
+
 |     |  |    |
 | --- | -------------- | ------------- |
 | 1.  | `make #FILNAVN#` | (kompilering) |
