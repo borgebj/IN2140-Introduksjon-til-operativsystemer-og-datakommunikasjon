@@ -5,6 +5,5 @@
 <h2> C programmering </h2>
 <p> makefile er filen brukt for å automatisere kompilering av C-programmene. </p>
 <p> For å kompilere med makefile: </p>
-<ul>
-  <il> 1 </il>
-</ul>
+<p> 1. make #FILNAVN# </p>
+<p> 2. ./#OUTNAVN# </p>
