@@ -1,5 +1,5 @@
 <h1> IN2140 </h1>
-Denne repositorien inneholder filer knyttet til IN2140 UiO.
+Denne repositorien inneholder filer knyttet til IN2140 UiO.  
 Filer er sortert basert på bl.a. ukenummer
 
 <h2> C programmering </h2>
