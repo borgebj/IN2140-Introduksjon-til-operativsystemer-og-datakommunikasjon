@@ -10,3 +10,6 @@ For å kompilere med makefile: <br> <br>
 | --- | -------------- | ------------- |
 | 1.  | `make #FILNAVN#` | (kompilering) |
 | 2.  | `./#OUTNAVN#`    | (kjøring)      |
+
+<h3> Manuell kompilering </h3>
+Test
