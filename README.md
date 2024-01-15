@@ -4,8 +4,9 @@ Filer er sortert basert på bl.a. ukenummer
 
 <h2> C programmering </h2>
 <b>Makefile</b> er filen brukt for å automatisere kompilering av C-programmene. <br>
-For å kompilere med makefile: <br> <br>
 
+
+<h3> Kompilering gjennom makefile </h3>
 |     |  |    |
 | --- | -------------- | ------------- |
 | 1.  | `make #FILNAVN#` | (kompilering) |
