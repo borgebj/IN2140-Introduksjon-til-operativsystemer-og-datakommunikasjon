@@ -5,5 +5,5 @@ Filer er sortert basert på bl.a. ukenummer
 <h2> C programmering </h2>
 makefile er filen brukt for å automatisere kompilering av C-programmene.
 For å kompilere med makefile:
-<p> 1. make #FILNAVN# </p>
-<p> 2. ./#OUTNAVN# </p>
+1. make #FILNAVN#
+2. ./#OUTNAVN#
