@@ -15,5 +15,5 @@ For å kompilere med makefile: <br> <br>
 
 |     |                              |               |
 | --- | ---------------------------- | ------------- |
-| 1.  | `gcc #FILNAVN#.c -o #UTNAVN# | (kompilering) |
-| 2.  | `./#OUTNAVN#`                | (kjøring)     |
+| 1.  | 'gcc #FILNAVN#.c -o #UTNAVN#' | (kompilering) |
+| 2.  | './#OUTNAVN#'                | (kjøring)     |
