@@ -8,7 +8,7 @@ uke3:uke3.c
 
 
 clean:
-	del -f uke3.exe
+	rm -f uke3
 
 ificpy:
 	scp demo.c makefile borgebj@login.ifi.uio.no:~/Documents/in2140

@@ -17,4 +17,4 @@ array:array.c
 	gcc -std=gnu11 array.c -o array
 
 clean:
-	del -f test.exe pekere.exe layout.exe string.exe array.exe
+	rm -f test pekere layout string array
