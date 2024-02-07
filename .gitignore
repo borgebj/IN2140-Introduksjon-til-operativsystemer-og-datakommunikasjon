@@ -3,3 +3,6 @@
 .idea
 # Annet
 *.exe
+*exe
+*out
+*o
