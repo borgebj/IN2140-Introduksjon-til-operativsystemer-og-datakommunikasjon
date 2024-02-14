@@ -1,6 +1,6 @@
 
 CFLAGS = -std=gnu11 -g -Wall -Wextra
-BIN = hvaPrintes hello greet
+BIN = hvaPrintes hello greet test
 
 all: $(BIN)
 
@@ -12,6 +12,9 @@ hello: hello.c
 
 greet: demo.c func.c
 	gcc $(CFLAGS) demo.c func.c -o greet
+
+test: test.c
+	gcc $(CFLAGS) test.c -o test
 
 clean:
 	rm -f $(BIN)
