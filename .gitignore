@@ -6,5 +6,5 @@
 *exe
 *out
 *o
-cmake-build-debug
-.idea
+*exe
+*.o
