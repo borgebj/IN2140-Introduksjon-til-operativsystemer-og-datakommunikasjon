@@ -8,3 +8,6 @@
 *o
 *exe
 *.o
+.idea
+cmake
+cmake-build-debug
