@@ -1,14 +1,11 @@
 
 CFLAGS = -std=gnu11 -g -Wall -Wextra
-BIN = unbuffered buffered
+BIN = uke8
 
 all: $(BIN)
 
-unbuffered: unbuffered.c
-	gcc $(CLFAGS) unbuffered.c -o unbuffered
-
-buffered: buffered.c
-	gcc $(CLFAGS) buffered.c -o buffered
+uke8: uke8.c
+	gcc $(CLFAGS) uke8.c -o uke8
 
 clean:
 	rm -f $(BIN)

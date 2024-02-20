@@ -20,7 +20,7 @@ struct inode
 	char           is_directory;
 
 	int            num_children;
-	struct inode** children;
+	struct inode** children; // similar to:    struct inode* children[#]
 
 	int            filesize;
     int            num_blocks;

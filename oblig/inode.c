@@ -44,18 +44,30 @@ static int next_inode_id( )
 
 struct inode* create_file( struct inode* parent, char* name, int size_in_bytes )
 {
+    // gå gjennom hele "parent-mappen"
+    // hvis navnet finnes, return NULL
+    // hvis ikke: size_in_bytes er antall bytes som skal lagres på disken
+    // må brue allocate_block
+
+    // hvis disk ikke har nok plass for allocate_block, "relase all resources" og return NULL
+
     /* to be implemented */
     return NULL;
 }
 
 struct inode* create_dir( struct inode* parent, char* name )
 {
+
     /* to be implemented */
     return NULL;
 }
 
 struct inode* find_inode_by_name( struct inode* parent, char* name )
 {
+    // iterer gjennom parent og finn inode med "name"
+    // success: return peker til inode
+    // fails: return NULL
+
     /* to be implemented */
     return NULL;
 }
@@ -74,12 +86,29 @@ int is_node_in_parent( struct inode* parent, struct inode* node )
 
 int delete_file( struct inode* parent, struct inode* node )
 {
+    // node er fil som skal slettes
+    // parent er mappe som skal leses gjennom
+
+    // hvis parent inneholder node:  inode kan bli slettet, return 0
+    // ellers: return -1
+
+    // må bruke "free_block" fra allocation for å frigjøre minne for return
     /* to be implemented */
     return 0;
 }
 
 int delete_dir( struct inode* parent, struct inode* node )
 {
+    // parent er "parent-mappe"
+    // node er mappen som skal slettes
+
+    // kan slettes om:
+    // parent er direkte parent, altså rett over
+    // node er tom og ikke inneholder filer
+
+    // success: return 0
+    // fail: return -1;
+
     /* to be implemented */
     return 0;
 }
@@ -95,6 +124,77 @@ void save_inodes( char* master_file_table, struct inode* root )
  */
 struct inode* load_inodes( char* master_file_table )
 {
+    printf("\n\nHello welcome to loan_inodes\n\n");
+
+    FILE *file;
+    int id;
+    int name_length;
+    char flag;
+    int num_children;
+
+    // attempts to open file using fopen with read-only and "binary-mode"
+    if ((file = fopen(master_file_table, "rb")) == NULL) {
+        perror("Error opening master file table");
+        exit(-1);
+    }
+
+    // reads id and name-length from file
+    size_t id_rc = fread(&id, sizeof(int), 1, file);
+    size_t len_rc = fread(&name_length, sizeof(int), 1, file);
+    if (id_rc != 1 || len_rc != 1) {
+        perror("Error reading id or name length");
+        fclose(file);
+        return NULL;
+    }
+
+    // reads and saves the name
+    char name[name_length];
+    size_t name_rc = fread(&name, sizeof(char), name_length, file);
+    if (name_rc < name_length)
+    {
+        perror("Error reading name");
+        fclose(file);
+        return NULL;
+    }
+    name[name_length] = '\0'; // sets null-byte
+
+    // reads flag as a character 1 = directory 0 = file
+    if (fread(&flag, sizeof(char), 1, file) != 1)
+    {
+        perror("Error reading flag");
+        fclose(file);
+        return NULL;
+    }
+
+    // reads number of children
+    if (fread(&num_children, sizeof(int), 1, file) != 1)
+    {
+        perror("Error reading num children");
+        fclose(file);
+        return NULL;
+    }
+
+    printf("ID: %d\nName length: %d\nName: %s\nFlag: %d\nNum children: %d\n\n", id, name_length, name, flag, num_children);
+
+    // frees file-memory
+    fclose(file);
+
+    // første 4 bytes er ID
+    // neste 4 bytes er navn-lengde
+    // neste # bytes er navnet
+    // neste er flag, 1 byte "boolean" yes/no flag
+    // siste bytes er "children" (om ikke dir)
+
+    // flag / dir bestemmer om neste bytes er children eller ikke
+    // e.g. om dir: neste er -> num_children -> children
+    // om ikke dir: neste er -> filsize -> num_Blocks -> blocks
+
+    // les hele disk og "master_file_table" og lag inode for hver eneste "entry" i filen
+    // lag inode for hver mappe og fil
+
+    // success: inode returned skal være root, navn-field skal peke tl streng "/"
+    // fail: return NULL ?
+
     /* to be implemented */
     return NULL;
 }
@@ -104,8 +204,7 @@ struct inode* load_inodes( char* master_file_table )
  */
 static int indent = 0;
 
-/* Do not change.
- */
+/* Do not change. */
 void debug_fs( struct inode* node )
 {
     if( node == NULL ) return;
@@ -134,8 +233,7 @@ void debug_fs( struct inode* node )
     }
 }
 
-/* Do not change.
- */
+/* Do not change. */
 void fs_shutdown( struct inode* inode )
 {
     if( !inode ) return;
