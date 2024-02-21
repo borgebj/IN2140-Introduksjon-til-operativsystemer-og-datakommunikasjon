@@ -24,7 +24,7 @@ struct inode
 
 	int            filesize;
     int            num_blocks;
-    size_t*        blocks;
+    size_t*        blocks; // pointer to allocated array (num_blocks) size, uint 8byte
 };
 
 // ---------------------------------------------------------------

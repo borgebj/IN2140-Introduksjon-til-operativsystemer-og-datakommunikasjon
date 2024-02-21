@@ -74,12 +74,14 @@ struct inode* find_inode_by_name( struct inode* parent, char* name )
 
 static int verified_delete_in_parent( struct inode* parent, struct inode* node )
 {
+    // hjelpemetode (ikke nødvendig)
     /* to be implemented */
     return 0;
 }
 
 int is_node_in_parent( struct inode* parent, struct inode* node )
 {
+    // hjelpemetode (ikke nødvendig)
     /* to be implemented */
     return 0;
 }
@@ -88,8 +90,9 @@ int delete_file( struct inode* parent, struct inode* node )
 {
     // node er fil som skal slettes
     // parent er mappe som skal leses gjennom
+    // (må sjekke om node er i parent og node er fil / skal være tom)
 
-    // hvis parent inneholder node:  inode kan bli slettet, return 0
+    // hvis: parent inneholder node:  inode kan bli slettet, return 0
     // ellers: return -1
 
     // må bruke "free_block" fra allocation for å frigjøre minne for return
@@ -113,9 +116,66 @@ int delete_dir( struct inode* parent, struct inode* node )
     return 0;
 }
 
+/* The function save_inode is a recursive functions that is
+ * called by save_inodes to store a single inode on disk,
+ * and call itself recursively for every child if the node
+ * itself is a directory.
+ */
+static void save_inode( FILE* file, struct inode* node )
+{
+    if( !node ) return;
+
+    int len = strlen( node->name ) + 1;
+
+    fwrite( &node->id, 1, sizeof(int), file );
+    fwrite( &len, 1, sizeof(int), file );
+    fwrite( node->name, 1, len, file );
+    fwrite( &node->is_directory, 1, sizeof(char), file );
+    if( node->is_directory )
+    {
+        fwrite( &node->num_children, 1, sizeof(int), file );
+        for( int i=0; i<node->num_children; i++ )
+        {
+            struct inode* child = node->children[i];
+            size_t id = child->id;
+            fwrite( &id, 1, sizeof(size_t), file );
+        }
+
+        for( int i=0; i<node->num_children; i++ )
+        {
+            struct inode* child = node->children[i];
+            save_inode( file, child );
+        }
+    }
+    else
+    {
+        fwrite( &node->filesize, 1, sizeof(int), file );
+        fwrite( &node->num_blocks, 1, sizeof(int), file );
+        for( int i=0; i<node->num_blocks; i++ )
+        {
+            fwrite( &node->blocks[i], 1, sizeof(size_t), file );
+        }
+    }
+}
+
 void save_inodes( char* master_file_table, struct inode* root )
 {
-    /* to be implemented */
+    if( root == NULL )
+    {
+        fprintf( stderr, "root inode is NULL\n" );
+        return;
+    }
+
+    FILE* file = fopen( master_file_table, "w" );
+    if( !file )
+    {
+        fprintf( stderr, "Failed to open file %s\n", master_file_table );
+        return;
+    }
+
+    save_inode( file, root );
+
+    fclose( file );
 }
 
 /*
@@ -128,84 +188,49 @@ struct inode* load_inodes( char* master_file_table )
     printf("Hello welcome to loan_inodes\n\n");
 
     // without error-check (shorter)
-//    FILE *file = fopen(master_file_table, "rb");
-//
-//    struct inode *root = malloc(sizeof(struct inode));
-//    fread(&root->id, sizeof(int), 1, file);
-//
-//    // handles name
-//    int name_length; fread(&name_length, sizeof(int), 1, file);
-//    root->name = malloc(name_length);
-//    fread(root->name, sizeof(char), name_length, file);
-//    root->name[name_length] = '\0';
-//
-//    fread(&root->is_directory, sizeof(char), 1, file);
-//    fread(&root->num_children, sizeof(int), 1, file);
-//
-//    printf("ID: %d\nname_len: %d\nName: %s\nis_dir: %d\nnum_children: %d\n",
-//           root->id, name_length, root->name, root->is_directory, root->num_children);
-//
-//    free(root);
+    FILE *file = fopen(master_file_table, "rb");
 
-    // with error-check (longer)
-    FILE *file;
-    int id;
-    int name_length;
-    char is_dir;
-    int num_children;
-
-    // allocates space for inode //TODO: free?
     struct inode *root = malloc(sizeof(struct inode));
 
-    // attempts to open file using fopen with read-only and "binary-mode"
-    if ((file = fopen(master_file_table, "rb")) == NULL) {
-        perror("Error opening master file table");
-        exit(-1);
-    }
-
-    // reads id and name-length from file
-    size_t id_rc = fread(&id, sizeof(int), 1, file);
-    size_t len_rc = fread(&name_length, sizeof(int), 1, file);
-    if (id_rc != 1 || len_rc != 1) {
-        perror("Error reading id or name length");
-        fclose(file);
-        return NULL;
-    } root->id = id;
-
-    // reads and saves the name
-    char name[name_length]; //TODO: use malloc?
-    size_t name_rc = fread(&name, sizeof(char), name_length, file);
-    if (name_rc < name_length){
-        perror("Error reading name");
-        fclose(file);
-        return NULL;
-    }
-    name[name_length] = '\0'; // sets null-byte
-    root->name = name;
-
-    // reads flag as a character 1 = directory 0 = file
-    if (fread(&is_dir, sizeof(char), 1, file) != 1){
-        perror("Error reading flag");
-        fclose(file);
-        return NULL;
-    } root->is_directory = is_dir;
-
-    // reads number of children
-    if (!fread(&num_children, sizeof(int), 1, file)) {
-        perror("Error reading num children");
-        fclose(file);
-        return NULL;
-    } root->num_children = num_children;
+    fread(&root->id, sizeof(int), 1, file);
+    int name_length; fread(&name_length, sizeof(int), 1, file);
+    root->name = malloc(name_length);
+    fread(root->name, sizeof(char), name_length, file);
+    fread(&root->is_directory, sizeof(char), 1, file);
 
     // is_dir == 1 and num_children > 0
-    if (is_dir && num_children) {
+    if (root->is_directory) {
+
+        // reads how many children
+        fread(&root->num_children, sizeof(int), 1, file);
+
+        printf("ID: %d\nname_len: %d\nName: %s\nis_dir: %d\nnum_children: %d\n",root->id, name_length, root->name, root->is_directory, root->num_children);
+
+        for (int i = 0; i < 1; ++i) {
+            // TODO: recursive read
+            int id2, nm2;
+            fread(&id2, sizeof(int), 1, file);
+            fread(&nm2, sizeof(int), 1, file);
+            printf("%d\n%d\n", id2, nm2);
+//            char *name2 = malloc(nm2);
+//            fread(&name2, sizeof(char), name_length, 1);
+//            printf("%d %d %s\n", id2, nm2, name2);
+        }
         // scan children and assign to root->children
         // recursively?
         //TODO: find structure of next bytes
-    }
-    else { root->children = NULL; }
+        // -> 8 byte hvert barn (id)
 
-    printf("ID: %d\nName length: %d\nName: %s\nFlag: %d\nNum children: %d\n", id, name_length, name, flag, num_children);
+        // flag=1 -> id | lengde | navn | flag | num_children | children_id |
+        // flag=0 -> id | lengde | navn | flag | num_children | filesize | num_blocks | blocks |
+    }
+    else {
+        root->children = NULL;
+        // contains filsize, num_blocks and blocks
+    }
+//
+//    printf("ID: %d\nName length: %d\nName: %s\nFlag: %d\nNum children: %d\n",
+//           id, name_length, name, is_dir, num_children);
 
     // frees file-memory
     fclose(file);
