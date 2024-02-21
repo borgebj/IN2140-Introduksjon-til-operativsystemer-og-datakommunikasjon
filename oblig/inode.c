@@ -178,6 +178,57 @@ void save_inodes( char* master_file_table, struct inode* root )
     fclose( file );
 }
 
+struct inode* create_inode(FILE *file) {
+    struct inode *node = malloc(sizeof(struct inode));
+
+    fread(&node->id, sizeof(int), 1, file);
+
+    int name_length; fread(&name_length, sizeof(int), 1, file);
+    node->name = malloc(name_length);
+    fread(node->name, sizeof(char), name_length, file);
+    fread(&node->is_directory, sizeof(char), 1, file);
+
+    printf("\n\nid: %d\nname: %s\nflag: %d\n", node->id, node->name, node->is_directory);
+
+    // inode represents a directory
+    if (node->is_directory) {
+
+        // reads children-count
+        fread(&node->num_children, sizeof(int), 1, file);
+
+        printf("children: %d\n", node->num_children);
+
+        for (int i = 0; i < node->num_children; ++i) {
+            // this is the child-pointer
+            size_t child; fread(&child, sizeof(size_t), 1, file);
+            printf("%zu ", child);
+            //TODO: assign the child to node->children
+        }
+
+        // reads next children-nodes
+        struct inode *next_child = create_inode(file);
+
+    }
+    // Inode represents a file
+    else {
+        fread(&node->filesize, sizeof(int), 1, file);
+        fread(&node->num_blocks, sizeof(int), 1, file);
+
+        printf("filsize: %d\nnum blocks: %d\n", node->filesize, node->num_blocks);
+
+        for (int i = 0; i < node->num_blocks; ++i) {
+            size_t block; fread(&block, sizeof(size_t), 1, file);
+            printf("%zu ", block);
+            //TODO: assign the block to node->block
+        }
+
+        node->children = NULL;
+
+    }
+
+    return node;
+}
+
 /*
  * Creates inode in memory from master file table for each corresponding entry in file.
  * If loading succeeds, returned inode
@@ -190,59 +241,12 @@ struct inode* load_inodes( char* master_file_table )
     // without error-check (shorter)
     FILE *file = fopen(master_file_table, "rb");
 
-    struct inode *root = malloc(sizeof(struct inode));
+    struct inode *root = create_inode(file);
 
-    fread(&root->id, sizeof(int), 1, file);
-    int name_length; fread(&name_length, sizeof(int), 1, file);
-    root->name = malloc(name_length);
-    fread(root->name, sizeof(char), name_length, file);
-    fread(&root->is_directory, sizeof(char), 1, file);
-
-    // is_dir == 1 and num_children > 0
-    if (root->is_directory) {
-
-        // reads how many children
-        fread(&root->num_children, sizeof(int), 1, file);
-
-        printf("ID: %d\nname_len: %d\nName: %s\nis_dir: %d\nnum_children: %d\n",root->id, name_length, root->name, root->is_directory, root->num_children);
-
-        for (int i = 0; i < 1; ++i) {
-            // TODO: recursive read
-            int id2, nm2;
-            fread(&id2, sizeof(int), 1, file);
-            fread(&nm2, sizeof(int), 1, file);
-            printf("%d\n%d\n", id2, nm2);
-//            char *name2 = malloc(nm2);
-//            fread(&name2, sizeof(char), name_length, 1);
-//            printf("%d %d %s\n", id2, nm2, name2);
-        }
-        // scan children and assign to root->children
-        // recursively?
-        //TODO: find structure of next bytes
-        // -> 8 byte hvert barn (id)
-
-        // flag=1 -> id | lengde | navn | flag | num_children | children_id |
-        // flag=0 -> id | lengde | navn | flag | num_children | filesize | num_blocks | blocks |
-    }
-    else {
-        root->children = NULL;
-        // contains filsize, num_blocks and blocks
-    }
-//
-//    printf("ID: %d\nName length: %d\nName: %s\nFlag: %d\nNum children: %d\n",
-//           id, name_length, name, is_dir, num_children);
-
-    // frees file-memory
     fclose(file);
 
-    // les hele disk og "master_file_table" og lag inode for hver eneste "entry" i filen
-    // lag inode for hver mappe og fil
-
-    // success: inode returned skal være root, navn-field skal peke tl streng "/"
-    // fail: return NULL ?
-
     printf("\n--------------------------------------------------------\n\n");
-    /* to be implemented */
+    exit(1); //TODO remove
     return NULL;
 }
 
