@@ -1,26 +1,20 @@
 cmake_minimum_required(VERSION 3.0)
-project(MyProject)
+project(IN2140-Introduksjon-til-operativsystemer-og-datakommunikasjon)
 
-# Add all source files
-file(GLOB_RECURSE SOURCES *.c)
+# Add source files for each category and week combination
+file(GLOB_RECURSE CATEGORY_WEEKS "CBra/*/*.c" "gruppetimer/*/*.c" "oblig/*/*.c" "plenum/*/*.c" "ukesoppgaver/*/*.c")
 
-# CBra
-add_executable(unbuffered CBra/uke8/unbuffered.c)
+# Create an executable target for each combination of category and week
+foreach(program ${CATEGORY_WEEKS})
+    # Extract the filename without the extension
+    get_filename_component(file_name ${program} NAME_WE)
+    # Extract the directory path of the file
+    get_filename_component(dir_name ${program} DIRECTORY)
+    # Get the relative path from the project root to the file's directory
+    file(RELATIVE_PATH relative_dir ${CMAKE_SOURCE_DIR} ${dir_name})
+    # Replace directory separators with underscores to create a valid target name
+    string(REPLACE "/" "_" target_name "${relative_dir}_${file_name}_executable")
 
-# Oblig
-add_executable(inode oblig/inode.c
-        oblig/inode.c
-        oblig/allocation.c
-        oblig/create_fs.c
-        oblig/create_fs_1.c
-        oblig/create_fs_2.c
-        oblig/create_fs_3.c
-        oblig/del_fs.c
-        oblig/load_fs.c
-        CBra/uke8/buffered_vs_unbuffered.c
-        CBra/uke8/buffered.c)
-add_executable(buffered CBra/uke8/buffered.c)
-add_executable(buffered_vs_unbuffered CBra/uke8/buffered_vs_unbuffered.c)
-add_executable(bin_files CBra/uke8/bin_files.c
-        CBra/uke8/bin_files.c
-        gruppetimer/uke8/uke8.c)
+    # Add the executable target for this category-week combination
+    add_executable(${target_name} ${program})
+endforeach()

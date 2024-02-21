@@ -8,11 +8,12 @@
 typedef struct node {
     struct node *next;
     struct node *prev;
-};
+    int value;
+} node_t;
 
 node_t *head, *tail;
 
-void set_between(node *left, node_t *middle, node_t rigth) {
+void set_between(node_t *left, node_t *middle, node_t *right) {
     left->next = middle;
     middle->prev = left;
     middle->next = right;
@@ -62,7 +63,7 @@ void print_list() {
 }
 
 void free_list() {
-    node_t *node = head-next;
+    node_t *node = head->next;
     node_t *temp;
 
     while (node != tail) {
@@ -86,6 +87,10 @@ int main(void) {
         push(i);
         i++;
     }
+
+    pop();
+    pop();
+    pop();
 
     print_list();
     printf("\n");

@@ -27,6 +27,18 @@ struct inode
     size_t*        blocks;
 };
 
+// ---------------------------------------------------------------
+// første 4 bytes er ID
+// neste  4 bytes er navn-lengde
+// neste  # bytes er navnet
+// neste  er flag, 1 byte "boolean" yes/no flag
+// siste  bytes er "children" (om flag == 1)
+
+// flag / dir bestemmer om neste bytes er children eller ikke
+// e.g. om dir: neste er -> num_children -> children
+// om ikke dir: neste er -> filsize -> num_Blocks -> blocks
+// ---------------------------------------------------------------
+
 /* Create a file below the inode parent. Parent must
  * be a directory. The size of the file is size_in_bytes,
  * and create_file calls the allocate_block() function

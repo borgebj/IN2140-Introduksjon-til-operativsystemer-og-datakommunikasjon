@@ -124,7 +124,8 @@ void save_inodes( char* master_file_table, struct inode* root )
  */
 struct inode* load_inodes( char* master_file_table )
 {
-    printf("\n\nHello welcome to loan_inodes\n\n");
+    printf("\n--------------------------------------------------------\n");
+    printf("Hello welcome to loan_inodes\n\n");
 
     FILE *file;
     int id;
@@ -174,20 +175,10 @@ struct inode* load_inodes( char* master_file_table )
         return NULL;
     }
 
-    printf("ID: %d\nName length: %d\nName: %s\nFlag: %d\nNum children: %d\n\n", id, name_length, name, flag, num_children);
+    printf("ID: %d\nName length: %d\nName: %s\nFlag: %d\nNum children: %d\n", id, name_length, name, flag, num_children);
 
     // frees file-memory
     fclose(file);
-
-    // første 4 bytes er ID
-    // neste 4 bytes er navn-lengde
-    // neste # bytes er navnet
-    // neste er flag, 1 byte "boolean" yes/no flag
-    // siste bytes er "children" (om ikke dir)
-
-    // flag / dir bestemmer om neste bytes er children eller ikke
-    // e.g. om dir: neste er -> num_children -> children
-    // om ikke dir: neste er -> filsize -> num_Blocks -> blocks
 
     // les hele disk og "master_file_table" og lag inode for hver eneste "entry" i filen
     // lag inode for hver mappe og fil
@@ -195,6 +186,7 @@ struct inode* load_inodes( char* master_file_table )
     // success: inode returned skal være root, navn-field skal peke tl streng "/"
     // fail: return NULL ?
 
+    printf("--------------------------------------------------------\n");
     /* to be implemented */
     return NULL;
 }
