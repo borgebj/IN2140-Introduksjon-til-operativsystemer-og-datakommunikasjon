@@ -124,14 +124,38 @@ void save_inodes( char* master_file_table, struct inode* root )
  */
 struct inode* load_inodes( char* master_file_table )
 {
-    printf("\n--------------------------------------------------------\n");
+    printf("\n--------------------------------------------------------\n\n");
     printf("Hello welcome to loan_inodes\n\n");
 
+    // without error-check (shorter)
+//    FILE *file = fopen(master_file_table, "rb");
+//
+//    struct inode *root = malloc(sizeof(struct inode));
+//    fread(&root->id, sizeof(int), 1, file);
+//
+//    // handles name
+//    int name_length; fread(&name_length, sizeof(int), 1, file);
+//    root->name = malloc(name_length);
+//    fread(root->name, sizeof(char), name_length, file);
+//    root->name[name_length] = '\0';
+//
+//    fread(&root->is_directory, sizeof(char), 1, file);
+//    fread(&root->num_children, sizeof(int), 1, file);
+//
+//    printf("ID: %d\nname_len: %d\nName: %s\nis_dir: %d\nnum_children: %d\n",
+//           root->id, name_length, root->name, root->is_directory, root->num_children);
+//
+//    free(root);
+
+    // with error-check (longer)
     FILE *file;
     int id;
     int name_length;
-    char flag;
+    char is_dir;
     int num_children;
+
+    // allocates space for inode //TODO: free?
+    struct inode *root = malloc(sizeof(struct inode));
 
     // attempts to open file using fopen with read-only and "binary-mode"
     if ((file = fopen(master_file_table, "rb")) == NULL) {
@@ -146,34 +170,40 @@ struct inode* load_inodes( char* master_file_table )
         perror("Error reading id or name length");
         fclose(file);
         return NULL;
-    }
+    } root->id = id;
 
     // reads and saves the name
-    char name[name_length];
+    char name[name_length]; //TODO: use malloc?
     size_t name_rc = fread(&name, sizeof(char), name_length, file);
-    if (name_rc < name_length)
-    {
+    if (name_rc < name_length){
         perror("Error reading name");
         fclose(file);
         return NULL;
     }
     name[name_length] = '\0'; // sets null-byte
+    root->name = name;
 
     // reads flag as a character 1 = directory 0 = file
-    if (fread(&flag, sizeof(char), 1, file) != 1)
-    {
+    if (fread(&is_dir, sizeof(char), 1, file) != 1){
         perror("Error reading flag");
         fclose(file);
         return NULL;
-    }
+    } root->is_directory = is_dir;
 
     // reads number of children
-    if (fread(&num_children, sizeof(int), 1, file) != 1)
-    {
+    if (!fread(&num_children, sizeof(int), 1, file)) {
         perror("Error reading num children");
         fclose(file);
         return NULL;
+    } root->num_children = num_children;
+
+    // is_dir == 1 and num_children > 0
+    if (is_dir && num_children) {
+        // scan children and assign to root->children
+        // recursively?
+        //TODO: find structure of next bytes
     }
+    else { root->children = NULL; }
 
     printf("ID: %d\nName length: %d\nName: %s\nFlag: %d\nNum children: %d\n", id, name_length, name, flag, num_children);
 
@@ -186,7 +216,7 @@ struct inode* load_inodes( char* master_file_table )
     // success: inode returned skal være root, navn-field skal peke tl streng "/"
     // fail: return NULL ?
 
-    printf("--------------------------------------------------------\n");
+    printf("\n--------------------------------------------------------\n\n");
     /* to be implemented */
     return NULL;
 }

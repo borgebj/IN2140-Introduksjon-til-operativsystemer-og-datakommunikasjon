@@ -16,5 +16,6 @@ foreach(program ${CATEGORY_WEEKS})
     string(REPLACE "/" "_" target_name "${relative_dir}_${file_name}_executable")
 
     # Add the executable target for this category-week combination
-    add_executable(${target_name} ${program})
+    add_executable(${target_name} ${program}
+            oblig/inode.c)
 endforeach()
