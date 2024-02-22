@@ -242,10 +242,6 @@ struct inode* create_inode(FILE *file) {
  */
 struct inode* load_inodes( char* master_file_table )
 {
-    printf("\n--------------------------------------------------------\n\n");
-    printf("Hello welcome to loan_inodes\n\n");
-
-    // without error-check (shorter)
     FILE *file = fopen(master_file_table, "rb");
     if(!file){
         fprintf( stderr, "Failed to open file %s\n", master_file_table );
@@ -256,8 +252,6 @@ struct inode* load_inodes( char* master_file_table )
     debug_fs(root);
 
     fclose(file);
-
-    printf("\n--------------------------------------------------------\n\n");
     return root;
 }
 
