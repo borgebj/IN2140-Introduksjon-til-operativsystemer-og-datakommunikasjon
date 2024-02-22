@@ -180,8 +180,12 @@ void save_inodes( char* master_file_table, struct inode* root )
 
 struct inode* create_inode(FILE *file) {
 
+    struct inode** all_nodes = malloc(sizeof(struct inode));
+    int node_count = 0;
+
+    // reads file until end
     while (1) {
-        struct inode *node = malloc(sizeof(struct inode));
+        struct inode *node = (struct inode*) malloc(sizeof(struct inode));
 
         // info every inode contains
         size_t items_read = fread(&node->id, sizeof(int), 1, file);
@@ -210,11 +214,15 @@ struct inode* create_inode(FILE *file) {
                 node->children = malloc(node->num_children * sizeof(struct inode *));
                 printf("Children: %d\n", node->num_children);
 
+                int children[node->num_children];
+
                 // reads child IDs
                 for (int i = 0; i < node->num_children; ++i) {
-                    size_t child_id;
-                    fread(&child_id, sizeof(size_t), 1, file);
-                    printf("--> child: %zu\n", child_id);
+                    fread(&children[i], sizeof(size_t), 1, file);
+                }
+
+                for (int i = 0; i < node->num_children; ++i) {
+                    printf("--> child id: %d\n", children[i]);
                 }
             } else node->children = NULL;
 
@@ -225,13 +233,15 @@ struct inode* create_inode(FILE *file) {
             fread(&node->num_blocks, sizeof(int), 1, file);
 
             // allocates memory for block
-            printf("Blocks: %d\n", node->num_blocks);
+//            printf("Blocks: %d\n", node->num_blocks);
             node->blocks = malloc(node->num_blocks * sizeof(size_t));
             for (int i = 0; i < node->num_blocks; ++i) {
                 fread(&node->blocks[i], sizeof(size_t), 1, file);
                 printf("--> block: %zu\n", node->blocks[i]);
             }
         }
+        all_nodes[node_count++] = node;
+        all_nodes = realloc(all_nodes, sizeof(struct inode) * node_count);
     }
 
     return NULL;
