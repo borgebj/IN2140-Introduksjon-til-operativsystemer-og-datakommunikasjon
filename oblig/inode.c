@@ -181,14 +181,15 @@ void save_inodes( char* master_file_table, struct inode* root )
 struct inode* create_inode(FILE *file) {
     struct inode *node = malloc(sizeof(struct inode));
 
+    // info every inode contains
     fread(&node->id, sizeof(int), 1, file);
-
-    int name_length; fread(&name_length, sizeof(int), 1, file);
+    int name_length;
+    fread(&name_length, sizeof(int), 1, file);
     node->name = malloc(name_length);
     fread(node->name, sizeof(char), name_length, file);
     fread(&node->is_directory, sizeof(char), 1, file);
 
-    printf("\n\nid: %d\nname: %s\nflag: %d\n", node->id, node->name, node->is_directory);
+    printf("\nid: %d\nname: %s\nflag: %d\n", node->id, node->name, node->is_directory);
 
     // inode represents a directory
     if (node->is_directory) {
@@ -196,17 +197,19 @@ struct inode* create_inode(FILE *file) {
         // reads children-count
         fread(&node->num_children, sizeof(int), 1, file);
 
-        printf("children: %d\n", node->num_children);
+        if (node->num_children > 0) {
 
-        for (int i = 0; i < node->num_children; ++i) {
-            // this is the child-pointer
-            size_t child; fread(&child, sizeof(size_t), 1, file);
-            printf("%zu ", child);
-            //TODO: assign the child to node->children
-        }
+            // allocates memory for child-node
+            node->children = malloc(node->num_children * sizeof(struct inode *));
+            printf("Children: %d\n", node->num_children);
 
-        // reads next children-nodes
-        struct inode *next_child = create_inode(file);
+            // reads child IDs
+            for (int i = 0; i < node->num_children; ++i) {
+                int child_id;
+                fread(&child_id, sizeof(int), 1, file);
+                fread(&node->children[i], sizeof(size_t), 1, file);
+            }
+        } else node->children = NULL;
 
     }
     // Inode represents a file
@@ -214,16 +217,13 @@ struct inode* create_inode(FILE *file) {
         fread(&node->filesize, sizeof(int), 1, file);
         fread(&node->num_blocks, sizeof(int), 1, file);
 
-        printf("filsize: %d\nnum blocks: %d\n", node->filesize, node->num_blocks);
-
+        // allocates memory for block
+        printf("Blocks: %d\n", node->num_blocks);
+        node->blocks = malloc(node->num_blocks * sizeof(size_t));
         for (int i = 0; i < node->num_blocks; ++i) {
-            size_t block; fread(&block, sizeof(size_t), 1, file);
-            printf("%zu ", block);
-            //TODO: assign the block to node->block
+            fread(&node->blocks[i], sizeof(size_t), 1, file);
+            printf("--> block: %zu\n", node->blocks[i]);
         }
-
-        node->children = NULL;
-
     }
 
     return node;
@@ -241,11 +241,18 @@ struct inode* load_inodes( char* master_file_table )
     // without error-check (shorter)
     FILE *file = fopen(master_file_table, "rb");
 
-    struct inode *root = create_inode(file);
+    int byte, i = 0;
+    while ((byte = fgetc(file)) != EOF) {
+        printf("%02x ", byte);
+        if (++i % 26 == 0) printf("\n");
+    }
+
+//    struct inode *root = create_inode(file);
 
     fclose(file);
 
     printf("\n--------------------------------------------------------\n\n");
+    printf("EXITING PROGRAM VIA EXIT(1)\n\n");
     exit(1); //TODO remove
     return NULL;
 }
@@ -303,3 +310,36 @@ void fs_shutdown( struct inode* inode )
     free( inode );
 }
 
+
+//TODO:  remove
+/*
+    Representation of a master_file_table (from xxd -g 1 master_file_table)
+    each pair is a byte distributed over the structure of an inode
+
+    ---------------------------------------------------------------------------------------
+        id			name_len	name   flag  children num
+    00 00 00 00 | 02 00 00 00 | 2f 00 | 01 | 02 00 00 00 |
+
+                    children pointers
+    01 00 00 00 00 00 00 00 | 02 00 00 00 00 00 00 00
+    ---------------------------------------------------------------------------------------
+        id			name_len		name			  flag	 filesize	  num blocks
+    01 00 00 00 | 07 00 00 00 | 6b 65 72 6e 65 6c 00 | 00 | 20 4e 00 00 | 05 00 00 00 |
+
+                                    blocks
+    00 00 00 00 00 00 00 00 | 01 00 00 00 00 00 00 00 | 02 00 00 00 00 00 00 00 |
+    03 00 00 00 00 00 00 00 | 04 00 00 00 00 00 00 00 |
+    ---------------------------------------------------------------------------------------
+        id			name_len		name	 flag	children num
+    02 00 00 00 | 04 00 00 00 | 65 74 63 00 | 01 | 01 00 00 00 |
+
+                    children pointer
+                03 00 00 00 00 00 00 00
+    ---------------------------------------------------------------------------------------
+        id			name_len		name		   flag		filesize	 num blocks
+    03 00 00 00 | 06 00 00 00 | 68 6f 73 74 73 00 | 00 | d0 07 00 00 | 01 00 00 00 |
+
+            block
+    05 00 00 00 00 00 00 00
+    ---------------------------------------------------------------------------------------
+ */
