@@ -180,72 +180,60 @@ void save_inodes( char* master_file_table, struct inode* root )
 
 struct inode* create_inode(FILE *file) {
 
-    struct inode** all_nodes = malloc(sizeof(struct inode));
-    int node_count = 0;
-
     // reads file until end
-    while (1) {
-        struct inode *node = (struct inode*) malloc(sizeof(struct inode));
+    struct inode *node = (struct inode*) malloc(sizeof(struct inode));
 
-        // info every inode contains
-        size_t items_read = fread(&node->id, sizeof(int), 1, file);
+    // TODO: error checks?
 
-        if (items_read != 1) {
-            break; // Exit loop if end of file or error
-        }
+    // info every inode contains
+    // id, name_length, name, flag
+    fread(&node->id, sizeof(int), 1, file);
+    int name_length;
+    fread(&name_length, sizeof(int), 1, file);
+    node->name = malloc(name_length);
+    fread(node->name, sizeof(char), name_length, file);
+    fread(&node->is_directory, sizeof(char), 1, file);
 
-        int name_length;
-        fread(&name_length, sizeof(int), 1, file);
-        node->name = malloc(name_length);
-        fread(node->name, sizeof(char), name_length, file);
-        fread(&node->is_directory, sizeof(char), 1, file);
+    // inode represents a directory
+    if (node->is_directory) {
 
-        printf("\nid: %d\nname: %s\nflag: %d\n", node->id, node->name, node->is_directory);
+        // reads children-count
+        fread(&node->num_children, sizeof(int), 1, file);
 
-        // inode represents a directory
-        if (node->is_directory) {
+        // If it is 0, children is NULL.
+        // else children is array of pointers to child inodes
+        if (node->num_children > 0) {
 
-            // reads children-count
-            fread(&node->num_children, sizeof(int), 1, file);
+            // allocates memory for child-node
+            node->children = malloc(node->num_children * sizeof(struct inode *));
 
-            if (node->num_children > 0) {
+            int *children = malloc(node->num_children);
 
-                // allocates memory for child-node
-                node->children = malloc(node->num_children * sizeof(struct inode *));
-                printf("Children: %d\n", node->num_children);
-
-                int children[node->num_children];
-
-                // reads child IDs
-                for (int i = 0; i < node->num_children; ++i) {
-                    fread(&children[i], sizeof(size_t), 1, file);
-                }
-
-                for (int i = 0; i < node->num_children; ++i) {
-                    printf("--> child id: %d\n", children[i]);
-                }
-            } else node->children = NULL;
-
-        }
-        // Inode represents a file
-        else {
-            fread(&node->filesize, sizeof(int), 1, file);
-            fread(&node->num_blocks, sizeof(int), 1, file);
-
-            // allocates memory for block
-//            printf("Blocks: %d\n", node->num_blocks);
-            node->blocks = malloc(node->num_blocks * sizeof(size_t));
-            for (int i = 0; i < node->num_blocks; ++i) {
-                fread(&node->blocks[i], sizeof(size_t), 1, file);
-                printf("--> block: %zu\n", node->blocks[i]);
+            // reads child IDs to list
+            for (int i = 0; i < node->num_children; ++i) {
+                fread(&children[i], sizeof(size_t), 1, file);
             }
-        }
-        all_nodes[node_count++] = node;
-        all_nodes = realloc(all_nodes, sizeof(struct inode) * node_count);
-    }
 
-    return NULL;
-//    return node;
+            // gets the actual child-nodes (the next inode bytes-section)
+            for (int i = 0; i < node->num_children; ++i) {
+                node->children[i] = create_inode(file);
+            }
+            free(children);
+        } else node->children = NULL;
+
+    }
+    // Inode represents a file
+    else {
+        fread(&node->filesize, sizeof(int), 1, file);
+        fread(&node->num_blocks, sizeof(int), 1, file);
+
+        // allocates memory for block
+        node->blocks = malloc(node->num_blocks * sizeof(size_t));
+        for (int i = 0; i < node->num_blocks; ++i) {
+            fread(&node->blocks[i], sizeof(size_t), 1, file);
+        }
+    }
+    return node;
 }
 
 /*
@@ -259,15 +247,18 @@ struct inode* load_inodes( char* master_file_table )
 
     // without error-check (shorter)
     FILE *file = fopen(master_file_table, "rb");
+    if(!file){
+        fprintf( stderr, "Failed to open file %s\n", master_file_table );
+        return NULL;
+    }
 
     struct inode *root = create_inode(file);
+    debug_fs(root);
 
     fclose(file);
 
     printf("\n--------------------------------------------------------\n\n");
-    printf("EXITING PROGRAM VIA EXIT(1)\n\n");
-    exit(1); //TODO remove
-    return NULL;
+    return root;
 }
 
 /* This static variable is used to change the indentation while debug_fs
