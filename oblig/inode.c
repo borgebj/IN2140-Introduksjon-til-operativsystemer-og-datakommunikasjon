@@ -64,11 +64,25 @@ struct inode* create_dir( struct inode* parent, char* name )
 
 struct inode* find_inode_by_name( struct inode* parent, char* name )
 {
+    printf("-> From: %d looking for %s\n", parent->id, name);
     // iterer gjennom parent og finn inode med "name"
     // success: return peker til inode
     // fails: return NULL
 
-    /* to be implemented */
+    // case: parent-name is "name"
+    if (strcmp(parent->name, name) == 0) return parent;
+
+    // case: look through children-nodes
+    else if (parent->num_children > 0) {
+        for (int i = 0; i < parent->num_children; ++i) {
+            struct inode *child = find_inode_by_name(parent->children[i], name);
+            if (child != NULL){
+                printf("Found %s, id: %d\n", child->name, child->id);
+                return child;
+            }
+        }
+    }
+
     return NULL;
 }
 
@@ -207,9 +221,8 @@ struct inode* create_inode(FILE *file) {
             // allocates memory for child-node
             node->children = malloc(node->num_children * sizeof(struct inode *));
 
-            int *children = malloc(node->num_children);
-
             // reads child IDs to list
+            int *children = malloc(node->num_children);
             for (int i = 0; i < node->num_children; ++i) {
                 fread(&children[i], sizeof(size_t), 1, file);
             }
