@@ -18,7 +18,14 @@ Filer er sortert basert på bl.a. ukenummer
 |     |                              |               |
 | --- | ---------------------------- | ------------- |
 | 1.  | `gcc #FILNAVN#.c -o #UTNAVN#` | (kompilering) |
+| 1.1 | `gcc -std=gnu11 #FILNAVN#.c -o #UTNAVN#` | (kompilering) (C11 standard)
+| 1.2 | `gcc -Wall -Wextra #FILNAVN#.c -o #UTNAVN#` | (kompilering) med flagg for advarsler |
 | 2.  | `./#OUTNAVN#`                 | (kjøring)     |
 
 <b> -o </b> er flagg for å spesifisere "output" navn <br>
-<b> gcc </b> er kompilator for C/C++ (skaffet gjennomt mingw64)
+
+<b> gcc </b> er kompilator for C/C++ (skaffet gjennomt mingw64) <br>
+
+<b> -Wall </b> er flagg som spesifiserer vanlige "warning-messages" <br>
+
+<b> -Wextra </b> er flagg som spesifiserer flere "warning-messages" <br>
