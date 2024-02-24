@@ -56,7 +56,6 @@ struct inode* create_file( struct inode* parent, char* name, int size_in_bytes )
 }
 
 // counts nodes added by creating
-static int ids = 0;
 struct inode* create_dir( struct inode* parent, char* name ) {
 
     // allocates space for new directory
@@ -66,7 +65,7 @@ struct inode* create_dir( struct inode* parent, char* name ) {
         return NULL;
     }
     // initializing new_child values
-    new_child->id = ids; // ??
+    new_child->id = next_inode_id();
     new_child->name = strdup(name); // allocates and assigns using strdup
     new_child->is_directory = 1;
     new_child->num_children = 0;
@@ -108,7 +107,6 @@ struct inode* create_dir( struct inode* parent, char* name ) {
         parent->children = new_children;
     }
     parent->children[parent->num_children++] = new_child;
-    new_child->id++; // increase local id-count
     return new_child;
 }
 
@@ -257,6 +255,7 @@ struct inode* create_inode(FILE *file) {
     // info every inode contains
     // id, name_length, name, flag
     fread(&node->id, sizeof(int), 1, file);
+    num_inode_ids++; // increases global id-count
     int name_length;
     fread(&name_length, sizeof(int), 1, file);
     node->name = malloc(name_length);
