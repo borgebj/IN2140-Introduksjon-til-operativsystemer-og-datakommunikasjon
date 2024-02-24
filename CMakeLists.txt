@@ -17,5 +17,6 @@ foreach(program ${CATEGORY_WEEKS})
 
     # Add the executable target for this category-week combination
     add_executable(${target_name} ${program}
-            oblig/inode.c)
+            oblig/inode.c
+            oblig/create_fs_1.c)
 endforeach()

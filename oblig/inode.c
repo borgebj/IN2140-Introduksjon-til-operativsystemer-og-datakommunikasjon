@@ -55,34 +55,89 @@ struct inode* create_file( struct inode* parent, char* name, int size_in_bytes )
     return NULL;
 }
 
-struct inode* create_dir( struct inode* parent, char* name )
-{
+// counts nodes added by creating
+static int ids = 0;
+struct inode* create_dir( struct inode* parent, char* name ) {
 
-    /* to be implemented */
-    return NULL;
+    // allocates space for new directory
+    struct inode *new_child = malloc(sizeof(struct inode));
+    if (new_child == NULL) {
+        perror("Allocating new child in 'create_dir' failed");
+        return NULL;
+    }
+    // initializing new_child values
+    new_child->id = ids; // ??
+    new_child->name = strdup(name); // allocates and assigns using strdup
+    new_child->is_directory = 1;
+    new_child->num_children = 0;
+    new_child->children = NULL; // (?)
+    new_child->filesize = 0 ;
+    new_child->num_blocks = 0;
+    new_child->blocks = 0;
+
+    // case: parent is null, meaning the new root
+    if (parent == NULL) {
+        return new_child;
+    }
+
+    // case: parent exists
+    // first: check if it exists
+    if (find_inode_by_name(parent, name)) {
+        free(new_child);
+        return NULL;
+    }
+
+    // case: parent does not have children
+    if (parent->children == NULL) {
+        parent->children = malloc(sizeof(struct inode*));
+        if (parent->children == NULL) {
+            perror("Allocating children in 'create_dir' failed");
+            free(new_child);
+            return NULL;
+        }
+    }
+    // case: if parent has children, reallocate more memory
+    else {
+        struct inode **new_children = realloc(parent->children, (parent->num_children+1) * sizeof(struct inode*));
+        if (new_children == NULL) {
+            perror("Reallocating new children in 'create_dir' failed");
+            free(new_child);
+            return NULL;
+        }
+        // assign the newly allocated memory
+        parent->children = new_children;
+    }
+    parent->children[parent->num_children++] = new_child;
+    new_child->id++; // increase local id-count
+    return new_child;
 }
 
 struct inode* find_inode_by_name( struct inode* parent, char* name )
 {
-    printf("-> From: %d looking for %s\n", parent->id, name);
     // iterer gjennom parent og finn inode med "name"
     // success: return peker til inode
     // fails: return NULL
 
-    // case: parent-name is "name"
-    if (strcmp(parent->name, name) == 0) return parent;
+    if (parent != NULL) {
 
-    // case: look through children-nodes
-    else if (parent->num_children > 0) {
-        for (int i = 0; i < parent->num_children; ++i) {
-            struct inode *child = find_inode_by_name(parent->children[i], name);
-            if (child != NULL){
-                printf("Found %s, id: %d\n", child->name, child->id);
-                return child;
+        // case: parent-name is "name"
+        if (strcmp(parent->name, name) == 0) {
+            return parent;
+        }
+
+        // case: parent is dir
+        // look through children-nodes for name
+        if (parent->is_directory) {
+            if (parent->num_children > 0) {
+                for (int i = 0; i < parent->num_children; ++i) {
+                    struct inode *child = parent->children[i];
+                    if (strcmp(child->name, name) == 0) {
+                        return child;
+                    }
+                }
             }
         }
     }
-
     return NULL;
 }
 
@@ -262,7 +317,6 @@ struct inode* load_inodes( char* master_file_table )
     }
 
     struct inode *root = create_inode(file);
-    debug_fs(root);
 
     fclose(file);
     return root;
