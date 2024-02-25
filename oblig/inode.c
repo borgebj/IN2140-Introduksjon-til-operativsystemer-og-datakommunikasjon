@@ -56,8 +56,8 @@ struct inode* create_file( struct inode* parent, char* name, int size_in_bytes )
 }
 
 // counts nodes added by creating
-struct inode* create_dir( struct inode* parent, char* name ) {
-
+struct inode* create_dir( struct inode* parent, char* name )
+{
     // allocates space for new directory
     struct inode *new_child = malloc(sizeof(struct inode));
     if (new_child == NULL) {
