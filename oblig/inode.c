@@ -43,6 +43,23 @@ static int next_inode_id( )
     return retval;
 }
 
+/*
+ * Helper function that adds given child to parent->children by allocating space
+ */
+int add_inode_to_parent( struct inode* parent, struct inode* child) {
+    struct inode **new_children = realloc(parent->children, (parent->num_children+1) * sizeof(struct inode*));
+    if (new_children == NULL) {
+        perror("Allocating children in 'create_dir' failed");
+        free(child->name);
+        free(child);
+        num_inode_ids--;
+        return -1;
+    }
+    parent->children = new_children;
+    parent->children[parent->num_children++] = child;
+    return 0;
+}
+
 struct inode* create_file( struct inode* parent, char* name, int size_in_bytes )
 {
     // if name is not unique or parent doesnt exist, return NULL
@@ -56,7 +73,7 @@ struct inode* create_file( struct inode* parent, char* name, int size_in_bytes )
         perror("Allocating new child in 'create_file' failed");
         return NULL;
     }
-    // initializing new_child values
+    // initializing new_child values+
     new_child->id = next_inode_id();
     new_child->name = strdup(name); // allocates and assigns using strdup
     new_child->is_directory = 0;
@@ -69,9 +86,10 @@ struct inode* create_file( struct inode* parent, char* name, int size_in_bytes )
     new_child->num_blocks = blocks;
     new_child->blocks = malloc(sizeof(size_t) * blocks);
     if (new_child->blocks == NULL) {
-        perror("Allocating blocks in 'create_file' failed");
+        perror("Allocating blocks for %s in 'create_file' failed");
         free(new_child->name);
         free(new_child);
+        num_inode_ids--;
         return NULL;
     }
     // allocates blocks: if -1 is returned, allocation fails and NULL is returned
@@ -84,28 +102,21 @@ struct inode* create_file( struct inode* parent, char* name, int size_in_bytes )
             free(new_child->blocks);
             free(new_child->name);
             free(new_child);
+            num_inode_ids--;
             return NULL;
         }
         new_child->blocks[i] = result;
     }
 
-    // reallocates children based on how many there is
-    // works for when num_children are both 0 and above 0
-    struct inode **new_children = realloc(parent->children, (parent->num_children+1) * sizeof(struct inode*));
-    if (new_children == NULL) {
-        perror("Allocating children in 'create_dir' failed");
-        free(new_child->name);
-        free(new_child);
+    // adds inode to parent, response -1 is fail, 0 is success
+    int response = add_inode_to_parent(parent, new_child);
+    if (response != 0) {
         return NULL;
     }
-    parent->children = new_children;
-    parent->children[parent->num_children++] = new_child;
-    printf("\n\nCreating file %s under %s\n", name, parent->name);
-    debug_fs(parent);
+
     return new_child;
 }
 
-// counts nodes added by creating
 struct inode* create_dir( struct inode* parent, char* name )
 {
     // parent exist and name is not unique
@@ -134,19 +145,12 @@ struct inode* create_dir( struct inode* parent, char* name )
         return new_child;
     }
 
-    // reallocates children based on how many there is
-    // works for when num_children are both 0 and above 0
-    struct inode **new_children = realloc(parent->children, (parent->num_children+1) * sizeof(struct inode*));
-    if (new_children == NULL) {
-        perror("Allocating children in 'create_dir' failed");
-        free(new_child->name);
-        free(new_child);
+    // adds inode to parent, response -1 is fail, 0 is success
+    int response = add_inode_to_parent(parent,  new_child);
+    if (response != 0) {
         return NULL;
     }
-    parent->children = new_children;
-    parent->children[parent->num_children++] = new_child;
-    printf("\n\nCreating dir %s under %s\n", name, parent->name);
-    debug_fs(parent);
+
     return new_child;
 }
 
@@ -159,9 +163,7 @@ struct inode* find_inode_by_name( struct inode* parent, char* name )
         if (strcmp(parent->name, name) == 0) {
             return parent;
         }
-
-        // case: parent is dir
-        // look through children-nodes for name
+        // case: parent is dir -> look through children for name
         if (parent->is_directory) {
             if (parent->num_children > 0) {
                 for (int i = 0; i < parent->num_children; ++i) {

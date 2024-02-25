@@ -34,9 +34,9 @@ struct inode
 // neste  er flag, 1 byte "boolean" yes/no flag
 // siste  bytes er "children" (om flag == 1)
 
-// flag / dir bestemmer om neste bytes er children eller ikke
-// e.g. om dir: neste er -> num_children -> children
-// om ikke dir: neste er -> filsize -> num_Blocks -> blocks
+// flag / dir bestemmer videre struktur etter flag
+// e.g. om dir: neste er -> num_children -> children1 -> children2 ...
+// om ikke dir: neste er -> filsize -> num_Blocks -> block1 -> block2 ...
 // ---------------------------------------------------------------
 
 /* Create a file below the inode parent. Parent must
