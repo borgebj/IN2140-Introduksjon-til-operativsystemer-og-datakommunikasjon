@@ -1,22 +1,38 @@
 cmake_minimum_required(VERSION 3.0)
-project(IN2140-Introduksjon-til-operativsystemer-og-datakommunikasjon)
+project(MyProject)
 
-# Add source files for each category and week combination
-file(GLOB_RECURSE CATEGORY_WEEKS "CBra/*/*.c" "gruppetimer/*/*.c" "oblig/*/*.c" "plenum/*/*.c" "ukesoppgaver/*/*.c")
+# Function to create executable targets for a given directory
+# goes through all weeks
+# requirement: folder must have "uke#" folders
+function(create_executables directory_name)
+    file(GLOB WEEK_DIRECTORIES "${directory_name}/uke*")
+    foreach(week_dir ${WEEK_DIRECTORIES})
+        get_filename_component(week_number ${week_dir} NAME)
+        file(GLOB_RECURSE WEEK_SOURCE_FILES "${week_dir}/*.c")
+        foreach(file ${WEEK_SOURCE_FILES})
+            get_filename_component(filename ${file} NAME_WE)
+            add_executable(${week_number}_${filename}_executable ${file})
+        endforeach()
+    endforeach()
+endfunction()
 
-# Create an executable target for each combination of category and week
-foreach(program ${CATEGORY_WEEKS})
-    # Extract the filename without the extension
-    get_filename_component(file_name ${program} NAME_WE)
-    # Extract the directory path of the file
-    get_filename_component(dir_name ${program} DIRECTORY)
-    # Get the relative path from the project root to the file's directory
-    file(RELATIVE_PATH relative_dir ${CMAKE_SOURCE_DIR} ${dir_name})
-    # Replace directory separators with underscores to create a valid target name
-    string(REPLACE "/" "_" target_name "${relative_dir}_${file_name}_executable")
+# CBra files
+create_executables("CBra")
 
-    # Add the executable target for this category-week combination
-    add_executable(${target_name} ${program}
-            oblig/inode.c
-            oblig/create_fs_1.c)
+# gruppetimer files
+create_executables("gruppetimer")
+
+# plenum files
+create_executables("plenum")
+
+
+## Oblig files
+#file(GLOB OBLIG_FILES "oblig/*.c")
+#add_executable(oblig_executables ${OBLIG_FILES})
+
+# Oblig files
+file(GLOB OBLIG_FILES "oblig/*.c")
+foreach(file ${OBLIG_FILES})
+    get_filename_component(filename ${file} NAME_WE)
+    add_executable(${filename}_executable ${file} ${OBLIG_FILES})
 endforeach()

@@ -35,6 +35,7 @@ static int blocks_needed( int bytes )
  * Make sure to update num_inode_ids when you have loaded a simulated disk.
  * Do not change.
  */
+// same as return num_inode_ids++;
 static int next_inode_id( )
 {
     int retval = num_inode_ids;
@@ -44,20 +45,74 @@ static int next_inode_id( )
 
 struct inode* create_file( struct inode* parent, char* name, int size_in_bytes )
 {
-    // gå gjennom hele "parent-mappen"
-    // hvis navnet finnes, return NULL
-    // hvis ikke: size_in_bytes er antall bytes som skal lagres på disken
-    // må brue allocate_block
+    // if name is not unique or parent doesnt exist, return NULL
+    if (parent == NULL || find_inode_by_name(parent, name)) {
+        return NULL;
+    }
 
-    // hvis disk ikke har nok plass for allocate_block, "relase all resources" og return NULL
+    // allocates space for new directory
+    struct inode *new_child = malloc(sizeof(struct inode));
+    if (new_child == NULL) {
+        perror("Allocating new child in 'create_file' failed");
+        return NULL;
+    }
+    // initializing new_child values
+    new_child->id = next_inode_id();
+    new_child->name = strdup(name); // allocates and assigns using strdup
+    new_child->is_directory = 0;
+    new_child->num_children = 0;
+    new_child->children = NULL; // (?)
+    new_child->filesize = size_in_bytes;
 
-    /* to be implemented */
-    return NULL;
+    // handles block allocation
+    int blocks = blocks_needed(size_in_bytes);
+    new_child->num_blocks = blocks;
+    new_child->blocks = malloc(sizeof(size_t) * blocks);
+    if (new_child->blocks == NULL) {
+        perror("Allocating blocks in 'create_file' failed");
+        free(new_child->name);
+        free(new_child);
+        return NULL;
+    }
+    // allocates blocks: if -1 is returned, allocation fails and NULL is returned
+    for (int i = 0; i < blocks; ++i) {
+        int result = allocate_block();
+        if (result == -1) {
+            for (int j = 0; j < i; ++j) {
+                free_block((int) new_child->blocks[j]);
+            }
+            free(new_child->blocks);
+            free(new_child->name);
+            free(new_child);
+            return NULL;
+        }
+        new_child->blocks[i] = result;
+    }
+
+    // reallocates children based on how many there is
+    // works for when num_children are both 0 and above 0
+    struct inode **new_children = realloc(parent->children, (parent->num_children+1) * sizeof(struct inode*));
+    if (new_children == NULL) {
+        perror("Allocating children in 'create_dir' failed");
+        free(new_child->name);
+        free(new_child);
+        return NULL;
+    }
+    parent->children = new_children;
+    parent->children[parent->num_children++] = new_child;
+    printf("\n\nCreating file %s under %s\n", name, parent->name);
+    debug_fs(parent);
+    return new_child;
 }
 
 // counts nodes added by creating
 struct inode* create_dir( struct inode* parent, char* name )
 {
+    // parent exist and name is not unique
+    if (parent && find_inode_by_name(parent, name)) {
+        return NULL;
+    }
+
     // allocates space for new directory
     struct inode *new_child = malloc(sizeof(struct inode));
     if (new_child == NULL) {
@@ -72,50 +127,32 @@ struct inode* create_dir( struct inode* parent, char* name )
     new_child->children = NULL; // (?)
     new_child->filesize = 0 ;
     new_child->num_blocks = 0;
-    new_child->blocks = 0;
+    new_child->blocks = NULL;
 
     // case: parent is null, meaning the new root
     if (parent == NULL) {
         return new_child;
     }
 
-    // case: parent exists
-    // first: check if it exists
-    if (find_inode_by_name(parent, name)) {
+    // reallocates children based on how many there is
+    // works for when num_children are both 0 and above 0
+    struct inode **new_children = realloc(parent->children, (parent->num_children+1) * sizeof(struct inode*));
+    if (new_children == NULL) {
+        perror("Allocating children in 'create_dir' failed");
+        free(new_child->name);
         free(new_child);
         return NULL;
     }
-
-    // case: parent does not have children
-    if (parent->children == NULL) {
-        parent->children = malloc(sizeof(struct inode*));
-        if (parent->children == NULL) {
-            perror("Allocating children in 'create_dir' failed");
-            free(new_child);
-            return NULL;
-        }
-    }
-    // case: if parent has children, reallocate more memory
-    else {
-        struct inode **new_children = realloc(parent->children, (parent->num_children+1) * sizeof(struct inode*));
-        if (new_children == NULL) {
-            perror("Reallocating new children in 'create_dir' failed");
-            free(new_child);
-            return NULL;
-        }
-        // assign the newly allocated memory
-        parent->children = new_children;
-    }
+    parent->children = new_children;
     parent->children[parent->num_children++] = new_child;
+    printf("\n\nCreating dir %s under %s\n", name, parent->name);
+    debug_fs(parent);
     return new_child;
 }
 
 struct inode* find_inode_by_name( struct inode* parent, char* name )
 {
-    // iterer gjennom parent og finn inode med "name"
-    // success: return peker til inode
-    // fails: return NULL
-
+    // proceeds to search if parent exists
     if (parent != NULL) {
 
         // case: parent-name is "name"
@@ -373,45 +410,3 @@ void fs_shutdown( struct inode* inode )
     if( inode->blocks )   free( inode->blocks );
     free( inode );
 }
-
-
-//TODO:  remove
-/*
-    Representation of a master_file_table (from xxd -g 1 master_file_table)
-    each pair is a byte distributed over the structure of an inode
-
-    ---------------------------------------------------------------------------------------
-        id			name_len	name   flag  children num
-    00 00 00 00 | 02 00 00 00 | 2f 00 | 01 | 02 00 00 00 |
-
-    = 0 | 2 | / | 1 | 2
-
-                    children pointers
-    01 00 00 00 00 00 00 00 | 02 00 00 00 00 00 00 00
-    ---------------------------------------------------------------------------------------
-        id			name_len		name			  flag	 filesize	  num blocks
-    01 00 00 00 | 07 00 00 00 | 6b 65 72 6e 65 6c 00 | 00 | 20 4e 00 00 | 05 00 00 00 |
-
-    = 1 | 7 | kernel | 0 | 20000 | 5
-
-                                    blocks
-    00 00 00 00 00 00 00 00 | 01 00 00 00 00 00 00 00 | 02 00 00 00 00 00 00 00 |
-    03 00 00 00 00 00 00 00 | 04 00 00 00 00 00 00 00 |
-    ---------------------------------------------------------------------------------------
-        id			name_len		name	 flag	children num
-    02 00 00 00 | 04 00 00 00 | 65 74 63 00 | 01 | 01 00 00 00 |
-
-    = 2 | 4 | ect | 1 | 1
-
-                    children pointer
-                03 00 00 00 00 00 00 00
-    ---------------------------------------------------------------------------------------
-        id			name_len		name		   flag		filesize	 num blocks
-    03 00 00 00 | 06 00 00 00 | 68 6f 73 74 73 00 | 00 | d0 07 00 00 | 01 00 00 00 |
-
-    = 3 | 6 | hosts | 0 | 2000 | 1
-
-            block
-    05 00 00 00 00 00 00 00
-    ---------------------------------------------------------------------------------------
- */
