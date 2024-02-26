@@ -49,7 +49,7 @@ static int next_inode_id( )
 int add_inode_to_parent( struct inode* parent, struct inode* child) {
     struct inode **new_children = realloc(parent->children, (parent->num_children+1) * sizeof(struct inode*));
     if (new_children == NULL) {
-        perror("Allocating children in 'create_dir' failed");
+        perror("Allocating children in 'create_dir/file' failed");
         free(child->name);
         free(child);
         num_inode_ids--;
