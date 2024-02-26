@@ -110,7 +110,7 @@ struct inode* create_file( struct inode* parent, char* name, int size_in_bytes )
 
     // adds inode to parent, response -1 is fail, 0 is success
     int response = add_inode_to_parent(parent, new_child);
-    if (response != 0) {
+    if (response == -1) {
         return NULL;
     }
 
@@ -147,7 +147,7 @@ struct inode* create_dir( struct inode* parent, char* name )
 
     // adds inode to parent, response -1 is fail, 0 is success
     int response = add_inode_to_parent(parent,  new_child);
-    if (response != 0) {
+    if (response == -1) {
         return NULL;
     }
 
