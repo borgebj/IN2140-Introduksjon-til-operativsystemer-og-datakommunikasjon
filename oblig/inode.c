@@ -10,6 +10,8 @@
  * Do not change.
  */
 #define BLOCKSIZE 4096
+#define dispose(child) free(child)
+#define murder(child) free(child)
 
 /* The lowest unused node ID.
  * Do not change.
@@ -218,8 +220,30 @@ int delete_dir( struct inode* parent, struct inode* node )
     // success: return 0
     // fail: return -1;
 
-    /* to be implemented */
-    return 0;
+    // case: parent or node is null
+    if (parent == NULL || node == NULL) return -1;
+
+    // case: parent is a file or has no children
+    if (parent->is_directory == 0 || parent->children == NULL) return -1;
+
+    // case: node has children
+    if (node->num_children > 0) return -1;
+    else {
+        // look through parent for node
+        for (int i = 0; i < parent->num_children; ++i) {
+            struct inode *child = parent->children[i];
+            if (child == node) {
+                free(child);
+                parent->num_children--;
+                parent->children = realloc(parent->children, sizeof(struct inode*) * parent->num_children);
+                if (parent->children == NULL) {
+                    perror("Reallocating after deletion failed");
+                    return -1;
+                }
+            }
+        }
+    }
+    return -1;
 }
 
 /* The function save_inode is a recursive functions that is
