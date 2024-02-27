@@ -18,5 +18,12 @@ void printbits(void *n, int size) {
 }
 
 int main(void) {
-    unsigned char = 1 << 7;
+    char c = 1 << 7; // 00000001 -> 10000000 dvs (1) til (128)
+    short s = c;
+    int i = s;
+
+    printbits(&c, sizeof(char));
+    printbits(&s, sizeof(short));
+    printbits(&i, sizeof(int));
+    return 0;
 }
