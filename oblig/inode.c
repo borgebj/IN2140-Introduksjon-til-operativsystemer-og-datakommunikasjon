@@ -10,8 +10,8 @@
  * Do not change.
  */
 #define BLOCKSIZE 4096
-#define dispose(child) free(child)
-#define murder(child) free(child)
+#define FAILURE -1
+#define SUCCESS 0
 
 /* The lowest unused node ID.
  * Do not change.
@@ -48,18 +48,19 @@ static int next_inode_id( )
 /*
  * Helper function that adds given child to parent->children by allocating space
  */
-int add_inode_to_parent( struct inode* parent, struct inode* child) {
+int add_inode_to_parent( struct inode* parent, struct inode* child)
+{
     struct inode **new_children = realloc(parent->children, (parent->num_children+1) * sizeof(struct inode*));
     if (new_children == NULL) {
         perror("Allocating children in 'create_dir/file' failed");
         free(child->name);
         free(child);
         num_inode_ids--;
-        return -1;
+        return FAILURE;
     }
     parent->children = new_children;
     parent->children[parent->num_children++] = child;
-    return 0;
+    return SUCCESS;
 }
 
 struct inode* create_file( struct inode* parent, char* name, int size_in_bytes )
@@ -184,29 +185,61 @@ static int verified_delete_in_parent( struct inode* parent, struct inode* node )
 {
     // hjelpemetode (ikke nødvendig)
     /* to be implemented */
-    return 0;
+    return SUCCESS;
 }
 
 int is_node_in_parent( struct inode* parent, struct inode* node )
 {
     // hjelpemetode (ikke nødvendig)
     /* to be implemented */
-    return 0;
+    return SUCCESS;
 }
 
-int delete_file( struct inode* parent, struct inode* node )
+int delete_file(struct inode* parent, struct inode* node)
 {
-    // node er fil som skal slettes
-    // parent er mappe som skal leses gjennom
-    // (må sjekke om node er i parent og node er fil / skal være tom)
+    printf("\n------------------------------------------\n");
+    debug_fs(parent);
+    printf("\n\n");
+    // invalid states
+    if (parent == NULL || node == NULL ||
+        parent->is_directory == 0 || node->is_directory == 1 ||
+        parent->num_children == 0 || node->num_children > 0) {
+        return FAILURE;
+    }
 
-    // hvis: parent inneholder node:  inode kan bli slettet, return 0
-    // ellers: return -1
+    for (int i = 0; i < parent->num_children; ++i) {
+        struct inode *child = parent->children[i];
+        if (strcmp(child->name, node->name) == 0) {
+            // Free blocks
+            for (int j = 0; j < child->num_blocks; ++j) {
+                free_block((int) parent->children[i]->blocks[j]);
+            }
+            free(child->name);
+            free(child->blocks);
+            free(child);
+            child = NULL;
 
-    // må bruke "free_block" fra allocation for å frigjøre minne for return
-    /* to be implemented */
-    return 0;
+            // uses memory copy to replace deleted node with last node
+            // if c is removed: (a b c d) becomes (a b d d)
+//            if (i != parent->num_children-1) {
+//                memcpy(parent->children + i, parent->children + parent->num_children-1, sizeof(struct inode*));
+//            }
+
+            // shifts every node below, upwards to overwrite node and ensure order
+            for (int k = i; k < parent->num_children-1; ++k) {
+                parent->children[k] = parent->children[k+1];
+            }
+
+            parent->num_children--;
+            parent->children = realloc(parent->children, parent->num_children * sizeof(struct inode*));
+            debug_fs(parent);
+            printf("\n------------------------------------------\n");
+            return SUCCESS;
+        }
+    }
+    return FAILURE;
 }
+
 
 int delete_dir( struct inode* parent, struct inode* node )
 {
@@ -223,27 +256,24 @@ int delete_dir( struct inode* parent, struct inode* node )
     // case: parent or node is null
     if (parent == NULL || node == NULL) return -1;
 
-    // case: parent is a file or has no children
-    if (parent->is_directory == 0 || parent->children == NULL) return -1;
+    // case: parent is file or node is file (node must be dir)
+    if (parent->is_directory == 0 || node->is_directory == 0) return -1;
 
-    // case: node has children
-    if (node->num_children > 0) return -1;
+    // special case: parent has no children or file has children (should technically not happen)
+    if (parent->num_children == 0 || node->num_children > 0) return -1;
     else {
         // look through parent for node
-        for (int i = 0; i < parent->num_children; ++i) {
-            struct inode *child = parent->children[i];
-            if (child == node) {
-                free(child);
-                parent->num_children--;
-                parent->children = realloc(parent->children, sizeof(struct inode*) * parent->num_children);
-                if (parent->children == NULL) {
-                    perror("Reallocating after deletion failed");
-                    return -1;
-                }
-            }
-        }
+//        printf("Looking through: %s\n", parent->name);
+//        for (int i = 0; i < parent->num_children; ++i) {
+//            struct inode *child = parent->children[i];
+//            printf("-> child: %s\n", child->name);
+//        }
     }
-    return -1;
+//    printf("\n\n\n\n\n\nDeleting _dir_ (%s) from (%s)", node->name, parent->name);
+//    printf("\nDebugging (%s) \n", parent->name);
+//    debug_fs(parent);
+//    printf("\n\n Exiting ! \n\n");
+    return FAILURE;
 }
 
 /* The function save_inode is a recursive functions that is
@@ -308,8 +338,8 @@ void save_inodes( char* master_file_table, struct inode* root )
     fclose( file );
 }
 
-struct inode* create_inode(FILE *file) {
-
+struct inode* create_inode(FILE *file)
+{
     // reads file until end
     struct inode *node = (struct inode*) malloc(sizeof(struct inode));
 
@@ -336,9 +366,15 @@ struct inode* create_inode(FILE *file) {
         if (node->num_children > 0) {
 
             // allocates memory for child-node
-            node->children = malloc(node->num_children * sizeof(struct inode *));
+            node->children = malloc(node->num_children * sizeof(struct inode*));
+            if (node->children == NULL) {
+                perror("Allocating memory for children in 'create_inode' failed");
+                free(node->name);
+                free(node);
+                return NULL;
+            }
 
-            // reads child IDs to list
+            // reads child IDs (temporary) to malloc'ed list for counting
             int *children = malloc(node->num_children);
             for (int i = 0; i < node->num_children; ++i) {
                 fread(&children[i], sizeof(size_t), 1, file);
