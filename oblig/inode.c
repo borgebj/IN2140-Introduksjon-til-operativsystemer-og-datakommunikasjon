@@ -98,7 +98,7 @@ struct inode* create_file( struct inode* parent, char* name, int size_in_bytes )
     // allocates blocks: if -1 is returned, allocation fails and NULL is returned
     for (int i = 0; i < blocks; ++i) {
         int result = allocate_block();
-        if (result == -1) {
+        if (result == FAILURE) {
             for (int j = 0; j < i; ++j) {
                 free_block((int) new_child->blocks[j]);
             }
@@ -150,7 +150,7 @@ struct inode* create_dir( struct inode* parent, char* name )
 
     // adds inode to parent, response -1 is fail, 0 is success
     int response = add_inode_to_parent(parent,  new_child);
-    if (response == -1) {
+    if (response == FAILURE) {
         return NULL;
     }
 
