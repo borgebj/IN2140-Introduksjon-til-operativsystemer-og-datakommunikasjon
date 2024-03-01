@@ -181,25 +181,23 @@ struct inode* find_inode_by_name( struct inode* parent, char* name )
     return NULL;
 }
 
-static int verified_delete_in_parent( struct inode* parent, struct inode* node )
-{
-    // hjelpemetode (ikke nødvendig)
-    /* to be implemented */
-    return SUCCESS;
-}
 
-int is_node_in_parent( struct inode* parent, struct inode* node )
-{
-    // hjelpemetode (ikke nødvendig)
-    /* to be implemented */
-    return SUCCESS;
-}
+//static int verified_delete_in_parent( struct inode* parent, struct inode* node )
+//{
+//    // hjelpemetode (ikke nødvendig)
+//    /* to be implemented */
+//    return SUCCESS;
+//}
+//
+//int is_node_in_parent( struct inode* parent, struct inode* node )
+//{
+//    // hjelpemetode (ikke nødvendig)
+//    /* to be implemented */
+//    return SUCCESS;
+//}
 
 int delete_file(struct inode* parent, struct inode* node)
 {
-    printf("\n------------------------------------------\n");
-    debug_fs(parent);
-    printf("\n\n");
     // invalid states
     if (parent == NULL || node == NULL ||
         parent->is_directory == 0 || node->is_directory == 1 ||
@@ -207,6 +205,7 @@ int delete_file(struct inode* parent, struct inode* node)
         return FAILURE;
     }
 
+    // iterates through and finds right inode
     for (int i = 0; i < parent->num_children; ++i) {
         struct inode *child = parent->children[i];
         if (strcmp(child->name, node->name) == 0) {
@@ -219,21 +218,14 @@ int delete_file(struct inode* parent, struct inode* node)
             free(child);
             child = NULL;
 
-            // uses memory copy to replace deleted node with last node
-            // if c is removed: (a b c d) becomes (a b d d)
-//            if (i != parent->num_children-1) {
-//                memcpy(parent->children + i, parent->children + parent->num_children-1, sizeof(struct inode*));
-//            }
-
             // shifts every node below, upwards to overwrite node and ensure order
             for (int k = i; k < parent->num_children-1; ++k) {
                 parent->children[k] = parent->children[k+1];
             }
 
+            // decreases children in memory
             parent->num_children--;
             parent->children = realloc(parent->children, parent->num_children * sizeof(struct inode*));
-            debug_fs(parent);
-            printf("\n------------------------------------------\n");
             return SUCCESS;
         }
     }
@@ -243,36 +235,33 @@ int delete_file(struct inode* parent, struct inode* node)
 
 int delete_dir( struct inode* parent, struct inode* node )
 {
-    // parent er "parent-mappe"
-    // node er mappen som skal slettes
-
-    // kan slettes om:
-    // parent er direkte parent, altså rett over
-    // node er tom og ikke inneholder filer
-
-    // success: return 0
-    // fail: return -1;
-
-    // case: parent or node is null
-    if (parent == NULL || node == NULL) return -1;
-
-    // case: parent is file or node is file (node must be dir)
-    if (parent->is_directory == 0 || node->is_directory == 0) return -1;
-
-    // special case: parent has no children or file has children (should technically not happen)
-    if (parent->num_children == 0 || node->num_children > 0) return -1;
-    else {
-        // look through parent for node
-//        printf("Looking through: %s\n", parent->name);
-//        for (int i = 0; i < parent->num_children; ++i) {
-//            struct inode *child = parent->children[i];
-//            printf("-> child: %s\n", child->name);
-//        }
+    // invalid states
+    if (parent == NULL || node == NULL ||
+        parent->is_directory == 0 || node->is_directory == 0 ||
+        parent->num_children == 0 || node->num_children > 0) {
+        return FAILURE;
     }
-//    printf("\n\n\n\n\n\nDeleting _dir_ (%s) from (%s)", node->name, parent->name);
-//    printf("\nDebugging (%s) \n", parent->name);
-//    debug_fs(parent);
-//    printf("\n\n Exiting ! \n\n");
+
+    // iterates through and finds right inode
+    for (int i = 0; i < parent->num_children; ++i) {
+        struct inode *child = parent->children[i];
+        if (strcmp(child->name, node->name) == 0) {
+            free(child->name);
+            free(child);
+            child = NULL;
+
+            // shifts every node below, upwards to overwrite node and ensure order
+            for (int k = i; k < parent->num_children-1; ++k) {
+                parent->children[k] = parent->children[k+1];
+            }
+
+            // decreases children in memory
+            parent->num_children--;
+            parent->children = realloc(parent->children, parent->num_children * sizeof(struct inode*));
+            return SUCCESS;
+        }
+    }
+
     return FAILURE;
 }
 
