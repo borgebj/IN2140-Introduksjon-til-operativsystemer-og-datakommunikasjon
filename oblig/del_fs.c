@@ -63,6 +63,7 @@ int main( int argc, char* argv[] )
     printf("= Load all inodes from the file   =\n");
     printf("= master_file_table               =\n");
     printf("===================================\n");
+    printf("Loading file: %s\n", argv[1]);
     struct inode* root = load_inodes( argv[1] );
     debug_fs( root );
     debug_disk();

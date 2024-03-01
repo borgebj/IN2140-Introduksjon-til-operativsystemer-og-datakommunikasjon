@@ -109,4 +109,3 @@ test_del: prep_test_del test_del_fs_1 test_del_fs_2 test_del_fs_3
 clean:
 	rm -rf *.o
 	rm -f $(BIN)
-

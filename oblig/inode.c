@@ -50,9 +50,11 @@ static int next_inode_id( )
  */
 int add_inode_to_parent( struct inode* parent, struct inode* child)
 {
-    struct inode **new_children = realloc(parent->children, (parent->num_children+1) * sizeof(struct inode*));
+    struct inode **new_children = realloc(parent->children, (parent->num_children + 1) * sizeof(struct inode*));
     if (new_children == NULL) {
         perror("Allocating children in 'create_dir/file' failed");
+        if (child->blocks) free(child->blocks);
+        if (child->children) free(child->children);
         free(child->name);
         free(child);
         num_inode_ids--;
@@ -213,8 +215,9 @@ int delete_file(struct inode* parent, struct inode* node)
             for (int j = 0; j < child->num_blocks; ++j) {
                 free_block((int) parent->children[i]->blocks[j]);
             }
+            if (child->children) free(child->children);
+            if (child->blocks) free(child->blocks);
             free(child->name);
-            free(child->blocks);
             free(child);
             child = NULL;
 
@@ -246,6 +249,8 @@ int delete_dir( struct inode* parent, struct inode* node )
     for (int i = 0; i < parent->num_children; ++i) {
         struct inode *child = parent->children[i];
         if (strcmp(child->name, node->name) == 0) {
+            if (child->children) free(child->children);
+            if (child->blocks) free(child->blocks);
             free(child->name);
             free(child);
             child = NULL;
@@ -330,18 +335,40 @@ void save_inodes( char* master_file_table, struct inode* root )
 struct inode* create_inode(FILE *file)
 {
     // reads file until end
-    struct inode *node = (struct inode*) malloc(sizeof(struct inode));
+    // changing from malloc to calloc seemed to resolve a lot of errors?
+    struct inode *node = (struct inode*) calloc(1, sizeof(struct inode));
+    if (node == NULL) {
+        perror("Allocating memory for node in 'create_inode' failed");
+        return NULL;
+    }
 
-    // TODO: error checks?
+    // TODO: error check file-reading?
 
     // info every inode contains
     // id, name_length, name, flag
+
+    // handles id read and global id-increase
     fread(&node->id, sizeof(int), 1, file);
     num_inode_ids++; // increases global id-count
+
+    // length of name
     int name_length;
     fread(&name_length, sizeof(int), 1, file);
-    node->name = malloc(name_length);
-    fread(node->name, sizeof(char), name_length, file);
+
+    // allocates memory for name and checks
+    node->name = malloc(sizeof(char) * name_length);
+    if (node->name == NULL) {
+        perror("Allocating memory for name in 'create_inode' failed");
+        free(node);
+        return NULL;
+    }
+    // reads name and flag
+    if ((int)fread(node->name, sizeof(char), name_length, file) != name_length) {
+        perror("Failed to read name in 'create_node'");
+        free(node->name);
+        free(node);
+        return NULL;
+    }
     fread(&node->is_directory, sizeof(char), 1, file);
 
     // inode represents a directory
@@ -354,6 +381,19 @@ struct inode* create_inode(FILE *file)
         // else children is array of pointers to child inodes
         if (node->num_children > 0) {
 
+            // reads child IDs (temporary) to malloc'ed list for counting
+            size_t *children = malloc(node->num_children * sizeof(size_t));
+            if (children == NULL) {
+                perror("Allocating memory for children IDs in 'create_inode' failed");
+                free(node->name);
+                free(node);
+                return NULL;
+            }
+            for (int i = 0; i < node->num_children; ++i) {
+                fread(&children[i], sizeof(size_t), 1, file);
+            }
+            free(children);
+
             // allocates memory for child-node
             node->children = malloc(node->num_children * sizeof(struct inode*));
             if (node->children == NULL) {
@@ -363,19 +403,11 @@ struct inode* create_inode(FILE *file)
                 return NULL;
             }
 
-            // reads child IDs (temporary) to malloc'ed list for counting
-            int *children = malloc(node->num_children);
-            for (int i = 0; i < node->num_children; ++i) {
-                fread(&children[i], sizeof(size_t), 1, file);
-            }
-
             // gets the actual child-nodes (the next inode bytes-section)
             for (int i = 0; i < node->num_children; ++i) {
                 node->children[i] = create_inode(file);
             }
-            free(children);
         } else node->children = NULL;
-
     }
     // Inode represents a file
     else {
@@ -384,6 +416,12 @@ struct inode* create_inode(FILE *file)
 
         // allocates memory for block
         node->blocks = malloc(node->num_blocks * sizeof(size_t));
+        if (node->blocks == NULL) {
+            perror("Allocating memory for blocks in 'create_inode' failed");
+            free(node->name);
+            free(node);
+            return NULL;
+        }
         for (int i = 0; i < node->num_blocks; ++i) {
             fread(&node->blocks[i], sizeof(size_t), 1, file);
         }
