@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
-project(MyProject)
+project(IN2140-Introduksjon-til-operativsystemer-og-datakommunikasjon)
 
 # Function to create executable targets for a given directory
 # goes through all weeks
@@ -11,7 +11,9 @@ function(create_executables directory_name)
         file(GLOB_RECURSE WEEK_SOURCE_FILES "${week_dir}/*.c")
         foreach(file ${WEEK_SOURCE_FILES})
             get_filename_component(filename ${file} NAME_WE)
-            add_executable(${week_number}_${filename}_executable ${file})
+            # Append directory name to ensure unique target names
+            string(REPLACE "/" "_" target_name_prefix ${week_dir})
+            add_executable(${target_name_prefix}_${week_number}_${filename}_executable ${file})
         endforeach()
     endforeach()
 endfunction()
@@ -30,4 +32,11 @@ file(GLOB OBLIG_FILES "oblig/*.c")
 foreach(file ${OBLIG_FILES})
     get_filename_component(filename ${file} NAME_WE)
     add_executable(${filename}_executable ${file} ${OBLIG_FILES})
+endforeach()
+
+# annet
+file(GLOB SOURCES "*.c")
+foreach(source_file ${SOURCES})
+    get_filename_component(filename ${source_file} NAME_WE)
+    add_executable(${filename}_executable ${source_file})
 endforeach()
