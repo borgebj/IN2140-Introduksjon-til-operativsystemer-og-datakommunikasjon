@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <string.h>
+#include <unistd.h> // close
 
 #define PORT 2023
 
@@ -36,6 +37,7 @@ int main() {
            (struct sockaddr*)&address,
            sizeof(struct sockaddr_in));
 
+    close(sockfd);
     return 0;
 }
 

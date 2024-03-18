@@ -11,6 +11,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <arpa/inet.h>
+#include <unistd.h> // close
 
 #define PORT 2053
 
@@ -47,5 +48,6 @@ int main()
 
     printf("%s\n", buff);
 
+    close(sockfd);
     return 0;
 }
