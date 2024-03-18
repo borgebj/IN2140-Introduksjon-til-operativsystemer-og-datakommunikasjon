@@ -27,6 +27,9 @@ create_executables("gruppetimer")
 # plenum files
 create_executables("plenum")
 
+# oppgaver files
+create_executables("oppgaver")
+
 # Oblig files
 file(GLOB OBLIG_FILES "oblig/*.c")
 foreach(file ${OBLIG_FILES})
