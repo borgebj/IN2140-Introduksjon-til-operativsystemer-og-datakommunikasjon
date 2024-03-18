@@ -25,7 +25,6 @@ void check_error(int val, char *desc) {
 
 int main()
 {
-
     char melding[] = "Hei fra Børge!";
 
     // man 2 socket | man 7 ip
@@ -44,7 +43,7 @@ int main()
     dest_addr.sin_port = htons(PORT);
     dest_addr.sin_addr = addr;
 
-    // sender melding med UDP
+    // sender melding med UDP     | send |
     sendto(sockfd,
            melding,
            strlen(melding),

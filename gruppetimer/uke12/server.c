@@ -40,7 +40,7 @@ int main()
     rc = bind(sockfd, (const struct sockaddr *) &server_address, sizeof(server_address));
     check_error(rc, "bind");
 
-    // -1 pga null-byte
+    // -1 pga null-byte     | receive |
     rc = recv(sockfd, buff, 255-1, 0);
     check_error(rc, "receive");
     buff[rc] = 0;
