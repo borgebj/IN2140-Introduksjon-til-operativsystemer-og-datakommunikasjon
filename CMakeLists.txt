@@ -41,5 +41,6 @@ endforeach()
 file(GLOB SOURCES "*.c")
 foreach(source_file ${SOURCES})
     get_filename_component(filename ${source_file} NAME_WE)
-    add_executable(${filename}_executable ${source_file})
+    add_executable(${filename}_executable ${source_file}
+            CBra/uke9/lenkeliste.c)
 endforeach()
