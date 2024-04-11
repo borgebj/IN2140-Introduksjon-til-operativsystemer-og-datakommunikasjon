@@ -14,6 +14,10 @@
 #include "d1_udp.h"
 
 
+/**
+ * Creates a UDP socket not bound to any port.
+ * @return pointer to D1Peer-client on heap
+ */
 D1Peer* d1_create_client( )
 {
     // creates the UDP socket
@@ -30,11 +34,16 @@ D1Peer* d1_create_client( )
     return NULL;
 }
 
+/**
+ * Deletes client from parameter, freeing its memory
+ * @param peer node to delete
+ * @return always returns NULL
+ */
 D1Peer* d1_delete( D1Peer* peer )
 {
     // if non-NULL, close socket and free memory
     if (peer != NULL) {
-        if (peer->socket != -1) {
+        if (peer->socket != -1) { // shouldn't happen, but just in case
             close(peer->socket);
         }
         free(peer);
