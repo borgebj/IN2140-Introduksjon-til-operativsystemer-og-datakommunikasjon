@@ -34,7 +34,9 @@ create_executables("oppgaver")
 file(GLOB OBLIG_FILES "oblig/*.c")
 foreach(file ${OBLIG_FILES})
     get_filename_component(filename ${file} NAME_WE)
-    add_executable(${filename}_executable ${file} ${OBLIG_FILES})
+    add_executable(${filename}_executable ${file} ${OBLIG_FILES}
+            CBra/uke15/server.c
+            CBra/uke15/common.h)
 endforeach()
 
 # annet
@@ -42,5 +44,11 @@ file(GLOB SOURCES "*.c")
 foreach(source_file ${SOURCES})
     get_filename_component(filename ${source_file} NAME_WE)
     add_executable(${filename}_executable ${source_file}
-            CBra/uke9/lenkeliste.c)
+            CBra/uke9/lenkeliste.c
+            eksam/handout/d1_udp.c
+            eksam/handout/d1_udp.c
+            CBra/uke15/server.c
+            CBra/uke15/common.h
+            CBra/uke15/common.h
+    )
 endforeach()

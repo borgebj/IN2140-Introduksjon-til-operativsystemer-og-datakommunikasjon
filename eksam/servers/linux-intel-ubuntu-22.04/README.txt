@@ -17,7 +17,7 @@ d1_server:
   Both will terminate.
 
 d2_server:
-  This binary is a server that the client d2_test_client should connect to.
+  This binary is a server that the client d2_test_client should connec to.
   You start it with a UDP port.
   The client will use the PacketRequest message to send an ID to the server.
   The server will retrieve a tree structure for the given ID. It will
