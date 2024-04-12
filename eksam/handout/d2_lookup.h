@@ -20,7 +20,6 @@
  *
  * The only use for this header is to interpret the type field to decide
  * which other packet type the arriving buffer should be typecast to.
-
  * type is in network byte order.
  */
 struct PacketHeader
@@ -133,6 +132,7 @@ D2Client* d2_client_delete( D2Client* client );
 int d2_send_request( D2Client* client, uint32_t id );
 
 /* Wait for a PacketResponseSize packet from the server.
+ *
  * Returns the number of NetNodes that will follow in several PacketReponse
  * packet in case of success. Note that this is _not_ the number of
  * PacketResponse packets that will follow because of PacketReponse can
@@ -145,7 +145,7 @@ int d2_recv_response_size( D2Client* client );
 /* Wait for a PacketResponse packet from the server.
  * The caller must provide a buffer where up to 1024 bytes can be stored.
  *
- * In case of success, the number of bytes receive is returned.
+ * Returns the number of bytes received in case of success.
  * The PacketResponse header and all NetNodes included in the packet
  * are stored in the buffer.
  *
@@ -165,7 +165,7 @@ LocalTreeStore* d2_alloc_local_tree( int num_nodes );
 
 /* Release all memory that has been allocated for the local tree structures.
  */
-void  d2_free_local_tree( LocalTreeStore* nodes ); 
+void  d2_free_local_tree( LocalTreeStore* nodes );
 
 /* Take the buffer that has been filled by d2_recv_response, and the buflen,
  * which is the number of bytes containing all the NetNodes stored in the buffer,
@@ -202,4 +202,3 @@ id 0 value 72342 children 2
 void  d2_print_tree( LocalTreeStore* nodes );
 
 #endif /* D2_LOOKUP_H */
-

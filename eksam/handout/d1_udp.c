@@ -51,8 +51,10 @@ D1Peer* d1_delete( D1Peer* peer )
     return NULL;
 }
 
+// Discover address info for server, store in D1Peer
 int d1_get_peer_info( struct D1Peer* peer, const char* peername, uint16_t server_port )
 {
+    printf("Socket: %d\n", peer->socket);
     /* implement this */
     return 0;
 }
