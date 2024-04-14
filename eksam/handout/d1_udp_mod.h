@@ -9,6 +9,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+#define PACKETSIZE 1024
+
 /* This structure keeps all information about this client's association
  * with the server in one place.
  * It is expected that d1_create_client() allocates such a D1Peer object

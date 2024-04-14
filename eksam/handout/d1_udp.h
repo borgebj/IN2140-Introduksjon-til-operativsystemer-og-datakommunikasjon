@@ -14,7 +14,7 @@
 /* This is the packet header for the communication method that is implemented by the D1
  * entity.
  *
- * The maximum packet size if 1024 byte including the headers.
+ * The maximum packet size is 1024 byte including the headers.
  *
  * The header precedes every packet that is sent over the network.
  * The header fields are encoded in network byte order when they are sent over the
@@ -44,10 +44,10 @@
  * connection succeeds if the server responds with an ACK packet containing the same sequence
  * number.
  *
- * When the connection is establish, both client and server can send data packets. It is NOT
+ * When the connection is established, both client and server can send data packets. It is NOT
  * REQUIRED to implement an D1 entity that can always receive packets. It is acceptable that
  * the D1 entity waits for packets only when the next higher layer expects data packet. But
- * whenever it receives a data packet, it must send the appropiate ACK. Furthermore, it D1
+ * whenever it receives a data packet, it must send the appropriate ACK. Furthermore, it D1
  * must always block after sending a data packet or connect packet until it has received the
  * correct ACK. If it receives the wrong ACK or does not receive an ACK within 1 second, it
  * must resend its data packet or connect packet.
@@ -67,7 +67,7 @@ struct D1Header
 typedef struct D1Header D1Header;
 
 /* These are the possible values of D1Header.flags in host byte order.
- * When you send D1Headers over the network, they must be send in network
+ * When you send D1Headers over the network, they must be sent in network
  * byte order.
  */
 #define FLAG_DATA       (1 << 15)
@@ -97,7 +97,7 @@ D1Peer* d1_delete( D1Peer* peer );
  */
 int d1_get_peer_info( struct D1Peer* client, const char* servername, uint16_t server_port );
 
-/** If the buffer does not exceed the packet size, send add the D1 header and send
+/** If the buffer does not exceed the packet size, add the D1 header and send
  *  it to the peer.
  *  Returns the number of bytes sent in case of success, and a negative value in case
  *  of error.
