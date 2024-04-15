@@ -227,8 +227,21 @@ int d1_wait_ack( D1Peer* peer, char* buffer, size_t sz )
     }
 
     // retrives flags from received packet
-    uint16_t flags = ntohs(*((uint16_t*)buffer));
-    printbits(&flags, sizeof(uint16_t));
+    uint16_t flags = ntohs(*((uint16_t*)ack_buffer));
+    printf("Ack flags:\t\t"); printbits(&flags, sizeof(uint16_t));
+
+    D1Header *head = (D1Header *)&ack_buffer;
+    size_t flags_2 = ntohs(head->flags);
+    size_t checksum = head->checksum;
+    size_t size = ntohl(head->size);
+
+    printf("\n[ in ack ]\n");
+    printf("Flag: (%zu)\t\t", flags_2); printbits(&flags_2, sizeof(uint16_t));
+    printf("Checksum (%zu)\t\t", checksum); printbits(&checksum, sizeof(uint16_t));
+    printf("Size: (%d)\t\t", size); printbits(&size, sizeof(uint32_t));
+    char *payload = &ack_buffer[HEADER_SIZE];
+    payload[sz] = '\0';
+    printf("Payload '%s'\n", payload);
 
 
     int received_seqno = (flags & ACKNO);
@@ -291,14 +304,14 @@ int d1_send_data( D1Peer* peer, char* buffer, size_t sz )
 
 
     // tests
-//    D1Header *head = (D1Header *)&packet;
-//    printf("Creating header\n");
-//    printf("Flag:\t\t"); printbits(&head->flags, sizeof(uint16_t));
-//    printf("Checksum:\t"); printbits(&head->checksum, sizeof(uint16_t));
-//    printf("Size:\t\t"); printbits(&head->size, sizeof(uint32_t));
-//    char *payload = &packet[HEADER_SIZE];
-//    payload[sz] = '\0';
-//    printf("Payload %s\n", payload);
+    D1Header *head = (D1Header *)&packet;
+    printf("\n[ Before sending, packet ]\n");
+    printf("Flag: (%d)\t\t", head->flags); printbits(&head->flags, sizeof(uint16_t));
+    printf("Checksum: (%d)\t", head->checksum); printbits(&head->checksum, sizeof(uint16_t));
+    printf("Size: (%d)\t", head->size); printbits(&head->size, sizeof(uint32_t));
+    char *payload = &packet[HEADER_SIZE];
+    payload[sz] = '\0';
+    printf("Payload '%s'\n", payload);
 
     // sends the packet
     // Sends the packet

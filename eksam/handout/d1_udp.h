@@ -47,7 +47,7 @@
  * When the connection is establish, both client and server can send data packets. It is NOT
  * REQUIRED to implement an D1 entity that can always receive packets. It is acceptable that
  * the D1 entity waits for packets only when the next higher layer expects data packet. But
- * whenever it receives a data packet, it must send the appropiate ACK. Furthermore, it D1
+ * whenever it receives a data packet, it must send the appropriate ACK. Furthermore, it D1
  * must always block after sending a data packet or connect packet until it has received the
  * correct ACK. If it receives the wrong ACK or does not receive an ACK within 1 second, it
  * must resend its data packet or connect packet.
