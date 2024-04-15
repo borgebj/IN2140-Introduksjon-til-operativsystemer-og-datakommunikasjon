@@ -24,7 +24,51 @@ void printbits(void *n, int size) {
         }
         printf(" ");
     }
-    printf("\n");
+//    printf("\n");
+}
+
+void print_uint_bytes(uint16_t num) {
+    uint8_t *bytes = (uint8_t *)&num;
+    printf("%02x %02x\n", bytes[1], bytes[0]);
+}
+
+/**
+ * Compute the checksum over the entire packet
+ * @param header header-struct holding header-info
+ * @param buffer payload
+ * @param sz size of payload
+ * @return
+ */
+uint16_t compute_checksum(D1Header header, const char* buffer, size_t sz) {
+
+    // general error checks
+    if (buffer == NULL || sz == 0) return 0;
+
+    uint16_t checksum = 0;
+
+    // calculate checksum of header
+    const uint16_t *header_blocks = (const uint16_t*)&header;
+    for (size_t i = 0; i < sizeof(D1Header) / sizeof(uint16_t); ++i) {
+        if (i == 1) continue;
+        checksum ^= header_blocks[i];
+    }
+
+    // pad with 0 if uneven
+    if (sz % 2 != 0) {
+        char padded_buffer[sz + 1];
+        memcpy(padded_buffer, buffer, sz);
+        padded_buffer[sz] = 0;
+        buffer = padded_buffer;
+        sz += 1;
+    }
+
+    // xor the data-part
+    const uint16_t *data_blocks = (const uint16_t*)buffer;
+    for (size_t i = 0; i < sz / sizeof(uint16_t); ++i) {
+        checksum ^= data_blocks[i];
+    }
+
+    return checksum;
 }
 
 
@@ -101,9 +145,70 @@ int d1_get_peer_info( struct D1Peer* peer, const char* peername, uint16_t server
     return 1;
 }
 
-int d1_recv_data( struct D1Peer* peer, char* buffer, size_t sz )
+int d1_recv_data(struct D1Peer* peer, char* buffer, size_t sz)
 {
-    /* implement this */
+    printf("\n====== start recv =====\n");
+
+    struct sockaddr_in src_addr = peer->addr;
+    socklen_t addr_len = sizeof(struct sockaddr_in);
+
+    int bytes_received = recvfrom(peer->socket, buffer, sz, 0, (struct sockaddr*)&src_addr, &addr_len);
+
+    // check for response
+    if (bytes_received < 0) {
+        perror("recvfrom in recv_data");
+        return -1;
+    }
+
+    // check if packet is right size
+    if (bytes_received < sizeof(D1Header)) {
+        printf("Received data is smaller than the header size.\n");
+        return -1;
+    }
+
+    // Extract the header and perform byte order conversion
+    D1Header header;
+    memcpy(&header, buffer, sizeof(D1Header));
+
+    // extract and convert to host byte order
+    uint16_t flags = ntohs(header.flags);
+    uint16_t checksum = header.checksum;
+    uint32_t size = ntohl(header.size);
+
+    printbits(&flags, sizeof(uint16_t)); printf("  [ %d ]\n", flags);
+    printbits(&checksum, sizeof(uint16_t)); printf("  [ %d ]\n", checksum);
+    printbits(&size, sizeof(uint32_t)); printf("  [ %d ]\n", size);
+    printf("Packet: %d\n", (flags & FLAG_DATA) ? 1 : 0);
+    printf("Seqno: %d\n", (flags & SEQNO) ? 1 : 0);
+    printf("ACK pak: %d\n", (flags & FLAG_ACK) ? 1 : 0);
+    printf("ACK no: %d\n", (flags & ACKNO) ? 1 : 0);
+
+    uint16_t computed_checksum = 0;
+
+    // ===========================================
+
+    //TODO: Calculate checksum
+
+    printf("size: %u\n", size);
+    printf("\nAquired: %d\n", checksum);
+    printf("Computed: %d\n", computed_checksum);
+
+    // ===========================================
+
+
+    // check if size is incorrect
+    if (size != bytes_received) {
+        // ACK with opposite value
+    }
+
+    if (computed_checksum != checksum) {
+        // ack with opposite value
+    }
+
+    printf("Bytes received: %d\n", bytes_received);
+    printf("Bytes extracted: %d\n", size);
+
+    printf("\n====== end recv ========\n");
     return 0;
 }
 
@@ -116,41 +221,12 @@ int d1_wait_ack( D1Peer* peer, char* buffer, size_t sz )
      *
      * Implementation is optional.
      */
+
+
     printf("\n====== end wait ack ========\n");
-    return 0;
+    return 1;
 }
 
-// Compute the checksum over the entire packet
-uint16_t compute_checksum(D1Header header, const char* buffer, size_t sz) {
-
-    // general error checks
-    if (buffer == NULL || sz == 0) return 0;
-
-    uint16_t checksum = 0;
-
-    // calculate checksum of header
-    const uint16_t *header_blocks = (const uint16_t*)&header;
-    for (size_t i = 0; i < sizeof(D1Header) / sizeof(uint16_t); ++i) {
-        checksum ^= header_blocks[i];
-    }
-
-    // pad with 0 if uneven
-    if (sz % 2 != 0) {
-        char padded_buffer[sz + 1];
-        memcpy(padded_buffer, buffer, sz);
-        padded_buffer[sz] = 0;
-        buffer = padded_buffer;
-        sz += 1;
-    }
-
-    // xor the data-part
-    const uint16_t *data_blocks = (const uint16_t*)buffer;
-    for (size_t i = 0; i < sz / sizeof(uint16_t); ++i) {
-        checksum ^= data_blocks[i];
-    }
-
-    return checksum;
-}
 
 int d1_send_data( D1Peer* peer, char* buffer, size_t sz )
 {
@@ -172,31 +248,34 @@ int d1_send_data( D1Peer* peer, char* buffer, size_t sz )
     header.size = htonl(PACKET_SIZE);
 
     // marks flag-info and converts to network byte order
+//    printf("\n[Sending] before flag\t"); printbits(&header.flags, sizeof(uint16_t)); printf("\t(%d)\n", header.flags);
     header.flags |= FLAG_DATA;
     if (peer->next_seqno) header.flags |= SEQNO;
     peer->next_seqno = (peer->next_seqno == 1) ? 0 : 1;
+
+//    printf("[Sending] after flag\t"); printbits(&header.flags, sizeof(uint16_t)); printf("\t(%d)\n", header.flags);
+
     header.flags = htons(header.flags);
 
 
     // computes the packets checksum and converts to network byte order
     header.checksum = compute_checksum(header, buffer, sz);
-    header.checksum = htons(header.checksum);
+//    header.checksum = htons(header.checksum); // doesnt work when htons ?
 
     // places header and data into the packet
     memcpy(packet, &header, HEADER_SIZE);
     memcpy(packet + HEADER_SIZE, buffer, sz);
 
-    printf("\n\nmsg: %s\n", buffer);
-    printf("seqno: %d\n", (peer->next_seqno == 0 ? 1 : 0));
-    printf("size: %d\n", header.size);
-    printf("checksum: %d\n", header.checksum);
+//    printf("\n\nmsg: %s\n", buffer);
+//    printf("seqno: %d\n", (peer->next_seqno == 0 ? 1 : 0));
+//    printf("size: %d\n", header.size);
+//    printf("checksum: %d\n", header.checksum);
 
     // sends the packet
     int bytes_sent = sendto(peer->socket, packet, PACKET_SIZE, 0, (struct sockaddr*)&(peer->addr), sizeof(peer->addr));
-    printf("Sent bytes: %d\n\n\n", bytes_sent);
-//    d1_wait_ack(peer, packet, PACKET_SIZE);
+//    int response = d1_wait_ack(peer, packet, PACKET_SIZE);
 
-    return bytes_sent;
+    return 0;
 }
 
 void d1_send_ack( struct D1Peer* peer, int seqno )

@@ -36,7 +36,8 @@ int main(void) {
                   buff,
                   255-1,
                   0,
-                  (struct sockaddr *) &src_addr, &addr_len);
+                  (struct sockaddr *) &src_addr,
+                    &addr_len);
     check_error(rc, "receive");
     buff[rc] = 0;
 
