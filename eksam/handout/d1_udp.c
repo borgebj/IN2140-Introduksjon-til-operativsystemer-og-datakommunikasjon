@@ -43,19 +43,19 @@ uint16_t compute_checksum(D1Header header, const char* buffer, size_t sz) {
 
     // checksums the haeader-fields
     checksum ^= header.flags;
-    checksum ^= (uint16_t)(header.size & 0xFFFF);
-    checksum ^= (uint16_t)(header.size >> 16);
+    checksum ^= (uint16_t)(header.size & 0xFFFF); // upper size-field
+    checksum ^= (uint16_t)(header.size >> 16);    // lower size-field
 
     // adds padding if necessary
+    char padded_buffer[sz+1];
     if (sz % 2 != 0) {
-        char padded_buffer[sz+1];
         memcpy(padded_buffer, buffer, sz);
         padded_buffer[sz] = 0;
         sz++;
     }
 
     // xor the payload-part
-    const uint16_t *data_blocks = (const uint16_t *) buffer;
+    const uint16_t *data_blocks = (const uint16_t *) padded_buffer;
     for (int i = 0; i < sz / sizeof(uint16_t); ++i) {
         checksum ^= data_blocks[i];
     }
@@ -237,7 +237,11 @@ int d1_wait_ack( D1Peer* peer, char* buffer, size_t sz )
             return 1;
         } else {
             printf("\nChecksum differs\n");
+
+            //TODO spør om dette her, uklar kommentar
+            // + hva "alltid blokk etter sendt pakke til riktig ack", while-loop ?
             d1_send_data(peer, buffer, sz);
+            d1_wait_ack(peer, buffer, sz);
         }
     }
 
@@ -295,16 +299,29 @@ int d1_send_data( D1Peer* peer, char* buffer, size_t sz )
     D1Header header;
     header.flags = 0;
     header.checksum = 0;
-    header.size = htonl(PACKET_SIZE);
+
+    //TODO: spør om dette er riktig, siden det står i UDP.h
+    /* For connect, disconnect and ACK packets it is always 8. For data packets,
+       it counts the bytes of the header and the data. */
+    if (strcmp(buffer, "connect") == 0 || strcmp(buffer, "disconnect") == 0) {
+        header.size = 8;
+    }
+    else header.size = PACKET_SIZE;
 
     // marks flag-info and converts to network byte order
-    //TODO: spør om SEQNO skal bli satt til 1 når man sender
     header.flags |= FLAG_DATA;
 
-    // computes the packets checksum and converts to network byte order
-    header.flags = htons(header.flags);
-    header.checksum = compute_checksum(header, buffer, sz);
+    //TODO: spør om SEQNO skal bli satt til 1 når man sender
+    header.flags |= SEQNO;
+
+    //TODO: konverteres byte order før checksum?
+//    header.size = htonl(header.size);
     header.size = htonl(PACKET_SIZE);
+    header.flags = htons(header.flags);
+
+    // computes the packets checksum and converts to network byte order
+    header.checksum = compute_checksum(header, buffer, sz);
+
 
     // places header and data into the packet
     memcpy(packet, &header, HEADER_SIZE);
