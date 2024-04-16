@@ -153,7 +153,7 @@ uint16_t flip_ackno(D1Header head) {
 
 int d1_recv_data(struct D1Peer* peer, char* buffer, size_t sz)
 {
-    printf("==== inside recv_data ====\n");
+//    printf("==== inside recv_data ====\n");
     if (sz < 8) return -1;
 //    struct sockaddr_in src_addr = peer->addr;
 //    socklen_t addr_len = sizeof(struct sockaddr_in);
@@ -207,14 +207,7 @@ int d1_recv_data(struct D1Peer* peer, char* buffer, size_t sz)
 
 int d1_wait_ack( D1Peer* peer, char* buffer, size_t sz )
 {
-    printf("\n\n====== inside wait ack =====\n");
-    /* This is meant as a helper function for d1_send_data.
-     * When D1 data has send a packet, this one should wait for the suitable ACK.
-     * If the arriving ACK is wrong, it resends the packet and waits again.
-     *
-     * Implementation is optional.
-     */
-
+    printf("\n========== wait ACK ==========\n");
     int sockfd = peer->socket;
     struct sockaddr_in src_addr;
     socklen_t addr_len = sizeof(src_addr);
@@ -227,45 +220,57 @@ int d1_wait_ack( D1Peer* peer, char* buffer, size_t sz )
         return -1;
     }
 
-    // retrives flags from received packet
-    uint16_t flags = ntohs(*((uint16_t*)ack_buffer));
+    if (bytes_received > 0) {
+        uint16_t flags;
+        memcpy(&flags, ack_buffer, sizeof(uint16_t));
+        flags = ntohs(flags);
 
+        int received_ackno = (flags & ACKNO);
+        int expected_seqno = peer->next_seqno;
+        printf("Expected: %d\n", (peer->next_seqno));
+        printf("Received: %d\n", (flags & ACKNO));
+        printbits(&flags, sizeof(uint16_t));
 
-    uint16_t pack_flags = ntohs(*((uint16_t*)buffer));
-    printf("\n[ Package info ]\n");
-    printf("package flags:\t\t"); printbits(&pack_flags, sizeof(uint16_t));
-    uint32_t pack_size = ntohl(*((uint32_t*)(buffer + sizeof(uint32_t))));
-    printf("Pack size:\t\t%d\n", pack_size);
-    char *pakload = &buffer[HEADER_SIZE];
-    pakload[HEADER_SIZE] = '\0';
-    printf("Pack payload:\t\t'%s'\n", pakload);
-
-    int received_seqno = (flags & ACKNO);
-    int expeceted_seqno = peer->next_seqno;
-
-    printf("Expected: %d\n", expeceted_seqno);
-    printf("Received: %d\n", received_seqno);
-
-    // if seqno matches ackno, flip next_seqno
-    if (received_seqno == expeceted_seqno) {
-        printf("\nAckno match, continuing ...\n");
-        peer->next_seqno = (peer->next_seqno == 1) ? 0 : 1;
-        return 1;
-    }
-    else {
-        printf("Re-sending packet ...\n");
-        int bytes_sent = d1_send_data(peer, buffer, sz);
-        if (bytes_sent < 0) {
-            perror("Error sending data (wait_ack)\n");
-            return -1;
-        }
-        printf("Re-waiting for ack ...\n");
-        int bytes_received = d1_wait_ack(peer, buffer, sz);
-        if (bytes_received < 0) {
-            perror("Error waiting for ACK (wait_ack)\n");
-            return -1;
+        if (received_ackno == expected_seqno) {
+            printf("\nChecksum matches\n");
+            peer->next_seqno = (peer->next_seqno == 0) ? 1 : 0;
+            return 1;
+        } else {
+            printf("\nChecksum differs\n");
+            d1_send_data(peer, buffer, sz);
         }
     }
+
+//    // retrives flags from received packet
+//    uint16_t flags = ntohs(*((uint16_t*)ack_buffer));
+//    printf("Received flag\t"); printbits(&flags, sizeof(uint16_t)); printf("\n");
+//
+//    int received_seqno = (flags & ACKNO);
+//    int expeceted_seqno = peer->next_seqno;
+//
+//    printf("Expected: %d\n", expeceted_seqno);
+//    printf("Received: %d\n", received_seqno);
+//
+//    // if seqno matches ackno, flip next_seqno
+//    if (received_seqno == expeceted_seqno) {
+//        printf("\nAckno match, continuing ...\n");
+//        peer->next_seqno = (peer->next_seqno == 1) ? 0 : 1;
+//        return 1;
+//    }
+//    else {
+//        printf("Re-sending packet ...\n");
+//        int bytes_sent = d1_send_data(peer, buffer, sz);
+//        if (bytes_sent < 0) {
+//            perror("Error sending data (wait_ack)\n");
+//            return -1;
+//        }
+//        printf("Re-waiting for ack ...\n");
+//        int response = d1_wait_ack(peer, buffer, sz);
+//        if (response < 0) {
+//            perror("Error waiting for ACK (wait_ack)\n");
+//            return -1;
+//        }
+//    }
 
     printf("\n====== end wait ack ========\n\n");
     return 1;
@@ -276,6 +281,8 @@ int d1_send_data( D1Peer* peer, char* buffer, size_t sz )
 {
     // general error checks
     if (sz > 1016 || peer == NULL || buffer == NULL || sz == 0) return -1;
+
+    printf("\n[[ Sending: '%.*s' ]]\n", (int)sz, buffer);
 
     // declares sizes
     const size_t PACKET_SIZE = (HEADER_SIZE + sz);
@@ -299,32 +306,11 @@ int d1_send_data( D1Peer* peer, char* buffer, size_t sz )
     header.checksum = compute_checksum(header, buffer, sz);
     header.size = htonl(PACKET_SIZE);
 
-//    // tests
-//    printf("\n[ Creating header ]\n");
-//    uint32_t temp_size = ntohl(header.size);
-//    printf("Flag: (%d)\t\t", header.flags); printbits(&header.flags, sizeof(uint16_t));
-//    printf("Checksum: (%d)\t", header.checksum); printbits(&header.checksum, sizeof(uint16_t));
-//    printf("Size: (%d)\t\t", temp_size); printbits(&temp_size, sizeof(uint32_t));
-//    printf("\n");
-
     // places header and data into the packet
     memcpy(packet, &header, HEADER_SIZE);
     memcpy(packet + HEADER_SIZE, buffer, sz);
 
-//    // tests
-//    D1Header *head = (D1Header *)&packet;
-//    printf("\n[ Before sending, packet ]\n");
-//    printf("Flag: (%d)\t\t", head->flags); printbits(&head->flags, sizeof(uint16_t));
-//    printf("Checksum: (%d)\t", head->checksum); printbits(&head->checksum, sizeof(uint16_t));
-//    printf("Size: (%d)\t", head->size); printbits(&head->size, sizeof(uint32_t));
-
-//    char payload[sz];
-//    memcpy(payload, &packet[HEADER_SIZE], sz);
-//    payload[sz] = '\0';  // Null-terminate the payload string
-//    printf("\n [[ Sending payload '%s' ]]\n", payload);
-
     // sends the packet
-    // Sends the packet
     int bytes_sent = sendto(peer->socket, packet, PACKET_SIZE, 0, (struct sockaddr*)&(peer->addr), sizeof(peer->addr));
     if (bytes_sent < 0) {
         perror("Error sending data");
@@ -332,11 +318,11 @@ int d1_send_data( D1Peer* peer, char* buffer, size_t sz )
     }
 
     // Wait for ACK (optional?)
-//    int response = d1_wait_ack(peer, packet, PACKET_SIZE);
-//    if (response < 0) {
-//        perror("Error waiting for ACK");
-//        return -1;
-//    }
+    int response = d1_wait_ack(peer, buffer, sz);
+    if (response < 0) {
+        perror("Error waiting for ACK");
+        return -1;
+    }
 
     return bytes_sent;
 }
