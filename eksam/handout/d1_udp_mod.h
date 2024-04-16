@@ -9,7 +9,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-#define PACKETSIZE 1024
+#define MAX_PACKETSIZE 1024
 #define HEADER_SIZE sizeof(D1Header)
 
 /* This structure keeps all information about this client's association
