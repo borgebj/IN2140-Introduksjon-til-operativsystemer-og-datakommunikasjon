@@ -352,7 +352,7 @@ int d1_send_data( D1Peer* peer, char* buffer, size_t sz )
     uint16_t flags; memcpy(&flags, ack_buff, sizeof(uint16_t));
     uint32_t size; memcpy(&size, ack_buff + sizeof(uint32_t), sizeof(uint32_t));
 
-    int ack_response = (flags & ACKNO) ? 1 : 0;
+    int ack_response = (htons(flags) & ACKNO) ? 1 : 0;
     int expected_seqno = peer->next_seqno;
     int correct_ackno = (ack_response == expected_seqno);
 
@@ -368,7 +368,7 @@ int d1_send_data( D1Peer* peer, char* buffer, size_t sz )
     else {
          printf("Incorrect ackno!\n");
          printf("re-send package\n");
-        d1_send_data(peer, buffer, sz);
+         d1_send_data(peer, buffer, sz);
          return -1;
     }
 
