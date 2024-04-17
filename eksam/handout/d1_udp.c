@@ -184,9 +184,9 @@ int d1_recv_data(struct D1Peer* peer, char* buffer, size_t sz)
     printf("%d: Received %d bytes from %s\n", getpid(), bytes_received, inet_ntoa(peer->addr.sin_addr));
 
     // extract payload
-    int PAYLOAD_SIZE = (bytes_received - sizeof(D1Header));
-    char payload[PAYLOAD_SIZE];
-    memcpy(&payload, buffer + sizeof(D1Header), PAYLOAD_SIZE);
+//    int PAYLOAD_SIZE = (bytes_received - sizeof(D1Header));
+//    char payload[PAYLOAD_SIZE];
+//    memcpy(&payload, buffer + sizeof(D1Header), PAYLOAD_SIZE);
 
     // extract header info
     D1Header header;
@@ -194,41 +194,65 @@ int d1_recv_data(struct D1Peer* peer, char* buffer, size_t sz)
     memcpy(&header.checksum, buffer + sizeof(uint16_t), sizeof(uint16_t));
     memcpy(&header.size, buffer + sizeof(uint32_t), sizeof(uint32_t));
 
-    // calcualte checksum from buffer
-    uint16_t calculated_checksum = compute_checksum(header, payload, PAYLOAD_SIZE);
+    // extract payload: for calculating checksum
+    size_t PAYLOAD_SIZE = (bytes_received - sizeof(D1Header));
+    char *calc_payload = buffer + sizeof(D1Header);
+
+    // extracted payload: to send
+    char sendin_payload[PAYLOAD_SIZE];
+    memcpy(&sendin_payload, buffer + sizeof(D1Header), PAYLOAD_SIZE);
+
+    // calculate checksum using extracted payload
+    uint16_t computed_checksum = compute_checksum(header, calc_payload, PAYLOAD_SIZE);
+
+//    printf("\n\n=======[ Received info ]=======\n\n");
+//    printf("(before convertin byte order)\n");
+//    printf("Flags:\t\t(%x)\t", header.flags); printbits(&header.flags, sizeof(uint16_t));
+//    printf("Checksum:\t(%x)\t", header.checksum); printbits(&header.checksum, sizeof(uint16_t));
+//    printf("Size:\t  (%d)\t", header.size); printbits(&header.size, sizeof(uint32_t));
+//    printf("\n(after converting byte order)\n");
+//    header.flags = ntohs(header.flags); header.size = ntohl(header.size);
+//    printf("Flags:\t\t(%x)\t", header.flags); printbits(&header.flags, sizeof(uint16_t));
+//    printf("Checksum:\t(%x)\t", header.checksum); printbits(&header.checksum, sizeof(uint16_t));
+//    printf("Size:\t\t(%d)\t", header.size); printbits(&header.size, sizeof(uint32_t));
+//    printf("\nCalc. checksum: (%x)\t", computed_checksum); printbits(&computed_checksum, sizeof(uint16_t));
+//    printf("\n=======[ Received info ]=======\n\n");
 
     // convert to host byte order
     header.flags = htons(header.flags);
-    header.checksum = header.checksum;
     header.size = htonl(header.size);
 
-//    printbits(&header.flags, sizeof(uint16_t));
-//    printf("Size: %d\n", header.size);
-//    printf("Payload size: %zu\n", PAYLOAD_SIZE);
-//    printf("Payload: %s%c\n", payload, '\0');
-//    printf("Received checksum: %d\n", header.checksum);
-//    printf("Calcualted checksum: %d\n", calculated_checksum);
+    // compare checksum and size
+    int correct_checksum = (computed_checksum == header.checksum);
+    int correct_size = (bytes_received == header.size);
+
+    printf("%d: testing if ACK (%d) is set in flags (%d)\n", getpid(), 0, 0);
 
     // if data packet
-    if (header.flags & FLAG_DATA) {
-        printf("%d: Received packet was a data packet.\n", getpid());
-        printf("%d: Received a DATA packet with header %x %x %x, size correct, good checksum\n", getpid(), header.flags, header.size, header.checksum);
+    if (header.flags & FLAG_DATA ) {
+        if (correct_checksum && correct_size) {
+            printf("%d: Received a DATA packet with header %x %x %x, size correct, good checksum\n", getpid(), header.flags, header.size, header.checksum);
 
-        // copy payload over to buffer
-        memcpy(buffer, payload, PAYLOAD_SIZE);
+            // copy payload over to buffer
+            memcpy(buffer, sendin_payload, PAYLOAD_SIZE);
 
-        // gets seqno and sends an ack with same seqno
-        int seqno = (header.flags & SEQNO) ? 1 : 0;
-        d1_send_ack(peer, seqno);
+            // gets seqno and sends an ack with same seqno
+            int seqno = (header.flags & SEQNO) ? 1 : 0;
+            d1_send_ack(peer, seqno);
 
-        // returns size of payload
-        return PAYLOAD_SIZE;
+            // returns size of payload
+            return PAYLOAD_SIZE;
+        }
+        else {
+            // checksum or size differs, send ack with opposite value
+            printf("Incorrect checksum ...\n");
+            int seqno = (header.flags & SEQNO) ? 0 : 1;
+            d1_send_ack(peer, seqno);
+            //TODO: hva skal gjøres her? returne?
+        }
     }
     else {
         printf("%d: Received packet was not data packet ...\n", getpid());
-
-        int seqno = (header.flags & SEQNO) ? 0 : 1;
-        d1_send_ack(peer, seqno);
         return -1;
     }
 }
@@ -254,9 +278,8 @@ void d1_send_ack( struct D1Peer* peer, int seqno )
     // move ACKNO header to buffer
     memcpy(buffer, &header, sizeof(D1Header));
 
-    printf("%d: Sending an ACK packet, acking %d\n", getpid(), seqno);
-
     // sends ACKNO with opposite sequence number back to server
+    printf("%d: Sending an ACK packet, acking %d\n", getpid(), seqno);
     sendto(peer->socket, buffer, sz, 0, (struct sockaddr*)&(peer->addr), sizeof(peer->addr));
 }
 
@@ -305,7 +328,7 @@ int d1_send_data( D1Peer* peer, char* buffer, size_t sz )
     // general error checks
     if (sz > 1016 || peer == NULL || buffer == NULL || sz == 0) return -1;
 
-    printf("\n[>> Sending: '%.*s' <<]\n\n", (int)sz, buffer);
+//    printf("\n[>> Sending: '%.*s' <<]\n\n", (int)sz, buffer);
 
     // declares sizes
     const size_t PACKET_SIZE = (HEADER_SIZE + sz);
@@ -324,20 +347,19 @@ int d1_send_data( D1Peer* peer, char* buffer, size_t sz )
     header.flags |= FLAG_DATA;
     header.flags |= (peer->next_seqno << 7); // choose seqno based on peers next
 
-    // convert byte order before computing checksum
+    // convert to network byte order before computing checksum
     header.size = htonl(header.size);
     header.flags = htons(header.flags);
 
-    // computes the packets checksum and converts to network byte order
+    // computes the packets checksum
     header.checksum = compute_checksum(header, buffer, sz);
 
     // places header and data into the packet
     memcpy(packet, &header, HEADER_SIZE);
     memcpy(packet + HEADER_SIZE, buffer, sz);
 
-    printf("%d: Sending a DATA packet with header %x %x %x, sending bytes %d\n", getpid(), ntohs(header.flags), ntohl(header.size), header.checksum, ntohl(header.size));
-
     // sends the packet
+    printf("%d: Sending a DATA packet with header %x %x %x, sending bytes %d\n", getpid(), ntohs(header.flags), ntohl(header.size), header.checksum, ntohl(header.size));
     int bytes_sent = sendto(peer->socket, packet, PACKET_SIZE, 0, (struct sockaddr*)&(peer->addr), sizeof(peer->addr));
     if (bytes_sent < 0) {
         perror("Error sending data");
