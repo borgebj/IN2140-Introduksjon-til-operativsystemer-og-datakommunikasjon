@@ -152,15 +152,6 @@ int d1_get_peer_info( struct D1Peer* peer, const char* peername, uint16_t server
     return 1;
 }
 
-/**
- * Used for recv_data when incorrect size or checksum
- * Flips ackno for sending
- * @param head header file used in recv
- * @return flag with flipped ackno
- */
-uint16_t flip_ackno(D1Header header) {
-    return header.flags ^= ACKNO;
-}
 
 int d1_recv_data(struct D1Peer* peer, char* buffer, size_t sz)
 {
@@ -170,6 +161,7 @@ int d1_recv_data(struct D1Peer* peer, char* buffer, size_t sz)
 
     // receives data in the buffer
     int bytes_received = recvfrom(peer->socket, buffer, sz, 0, (struct sockaddr*)&src_addr, &addr_len);
+    printf("%d: Received %d bytes from %s\n", getpid(), bytes_received, inet_ntoa(peer->addr.sin_addr));
     if (bytes_received < 0) {
         perror("recvfrom in recv_data");
         return -1;
@@ -180,13 +172,6 @@ int d1_recv_data(struct D1Peer* peer, char* buffer, size_t sz)
         printf("Received data is smaller than the header size.\n");
         return -1;
     }
-
-    printf("%d: Received %d bytes from %s\n", getpid(), bytes_received, inet_ntoa(peer->addr.sin_addr));
-
-    // extract payload
-//    int PAYLOAD_SIZE = (bytes_received - sizeof(D1Header));
-//    char payload[PAYLOAD_SIZE];
-//    memcpy(&payload, buffer + sizeof(D1Header), PAYLOAD_SIZE);
 
     // extract header info
     D1Header header;
@@ -308,9 +293,10 @@ int d1_send_data( D1Peer* peer, char* buffer, size_t sz )
     header.checksum = 0;
     header.size = PACKET_SIZE;
 
-    // marks flag-info and converts to network byte order
+    // marks flag-info and converts to network byte order, based on package and next seqno
     header.flags |= FLAG_DATA;
-    header.flags |= (peer->next_seqno << 7); // choose seqno based on peers next
+    if (peer->next_seqno == 1) header.flags |= SEQNO;
+//    header.flags |= (peer->next_seqno << 7); // choose seqno based on peers next
 
     // convert to network byte order before computing checksum
     header.size = htonl(header.size);
