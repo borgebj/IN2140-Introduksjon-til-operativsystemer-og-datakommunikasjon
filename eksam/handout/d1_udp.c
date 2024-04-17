@@ -216,6 +216,7 @@ int d1_recv_data(struct D1Peer* peer, char* buffer, size_t sz)
 //    printf("Checksum:\t(%x)\t", header.checksum); printbits(&header.checksum, sizeof(uint16_t));
 //    printf("Size:\t\t(%d)\t", header.size); printbits(&header.size, sizeof(uint32_t));
 //    printf("\nCalc. checksum: (%x)\t", computed_checksum); printbits(&computed_checksum, sizeof(uint16_t));
+//    header.flags = htons(header.flags); header.size = htonl(header.size);
 //    printf("\n=======[ Received info ]=======\n\n");
 
     // convert to host byte order
@@ -225,8 +226,6 @@ int d1_recv_data(struct D1Peer* peer, char* buffer, size_t sz)
     // compare checksum and size
     int correct_checksum = (computed_checksum == header.checksum);
     int correct_size = (bytes_received == header.size);
-
-    printf("%d: testing if ACK (%d) is set in flags (%d)\n", getpid(), 0, 0);
 
     // if data packet
     if (header.flags & FLAG_DATA ) {
@@ -285,41 +284,7 @@ void d1_send_ack( struct D1Peer* peer, int seqno )
 
 int d1_wait_ack( D1Peer* peer, char* buffer, size_t sz )
 {
-//    printf("\n========== wait ACK ==========\n");
-//
-//    // peer info
-//    int sockfd = peer->socket;
-//    struct sockaddr_in src_addr;
-//    socklen_t addr_len = sizeof(src_addr);
-//
-//    // Receive the ACK packet
-//    char ack_buffer[MAX_PACKETSIZE];
-//    int bytes_received = recvfrom(sockfd, ack_buffer, MAX_PACKETSIZE, 0, (struct sockaddr*)&src_addr, &addr_len);
-//    if (bytes_received < 0) {
-//        perror("Error receiving ACK");
-//        return -1;
-//    }
-//
-//    // extract the flags from received ack
-//    uint16_t flags;
-//    memcpy(&flags, ack_buffer, sizeof(uint16_t));
-//    flags = ntohs(flags);
-//
-//    int received_ackno = (flags & ACKNO);
-//    int expected_seqno = peer->next_seqno;
-//    int correct_ack = (received_ackno == expected_seqno);
-//
-//    if (correct_ack) {
-//        peer->next_seqno = (peer->next_seqno == 0 ? 1 : 0);
-//        return 1;
-//    }
-//    else {
-//        // tre-transmit the packet
-//    }
-//
-//
-//    printf("====== end wait ack ========\n");
-//    return 1;
+    return 1;
 }
 
 
@@ -360,6 +325,7 @@ int d1_send_data( D1Peer* peer, char* buffer, size_t sz )
 
     // sends the packet
     printf("%d: Sending a DATA packet with header %x %x %x, sending bytes %d\n", getpid(), ntohs(header.flags), ntohl(header.size), header.checksum, ntohl(header.size));
+    printf("%d: Sending packet\n", getpid());
     int bytes_sent = sendto(peer->socket, packet, PACKET_SIZE, 0, (struct sockaddr*)&(peer->addr), sizeof(peer->addr));
     if (bytes_sent < 0) {
         perror("Error sending data");
@@ -375,38 +341,58 @@ int d1_send_data( D1Peer* peer, char* buffer, size_t sz )
         return -1;
     }
 
-    // extract header-info
-    uint16_t flags; memcpy(&flags, ack_buff, sizeof(uint16_t));
-    uint32_t size; memcpy(&size, ack_buff + sizeof(uint32_t), sizeof(uint32_t));
+    printf("%d: Received %d bytes from %s\n", getpid(), bytes_received, inet_ntoa(peer->addr.sin_addr));
 
-    int ack_response = (htons(flags) & ACKNO) ? 1 : 0;
+    // extract header-info
+    D1Header ack_header;
+    ack_header.flags = ntohs(*((uint16_t*)ack_buff));
+    ack_header.checksum = *((uint16_t*)(ack_buff + sizeof(uint16_t)));
+    ack_header.size = ntohl(*((uint32_t*)(ack_buff + sizeof(uint16_t) * 2)));
+
+    // compare ackn and seqno
+    int ack_response = (ack_header.flags & ACKNO) ? 1 : 0;
     int expected_seqno = peer->next_seqno;
     int correct_ackno = (ack_response == expected_seqno);
 
-//    printf("Ack flags:\t"); printbits(&flags, sizeof(uint16_t));
-//    printf("ACKno:\t\t%d\n", ack_response);
+    // compare correct size
+    size_t expected = ack_header.size;
+    int correct_size = (expected == bytes_received);
+
+//    printf("\n[ Sending - Ack received info ]\n\n");
+//    printf("Flags\t\t"); printbits(&ack_header.flags, sizeof(uint16_t));
+//    printf("Checksum\t"); printbits(&ack_header.checksum, sizeof(uint16_t));
+//    printf("Size\t\t"); printbits(&ack_header.size, sizeof(uint32_t));
+//    printf("Received byted:\t%d\n", bytes_received);
+//    printf("Ackno:\t\t%d\n", ack_response);
 //    printf("Seqno:\t\t%d\n", expected_seqno);
+//    printf("\n[ Sending - Ack received info ]\n\n");
 
     // if correct ackno: flip peers next sequence number
-    if (correct_ackno) {
-        peer->next_seqno = (peer->next_seqno ? 1 : 0);
-        return bytes_sent;
+    printf("%d: Testing if ACK (%x) is set in flags (%x)\n", getpid(), FLAG_ACK, ack_header.flags);
+    if (ack_header.flags & FLAG_ACK) {
+        if (correct_size) {
+            if (correct_ackno) {
+                printf("%d: received frame with header %x %x %x, size correct - "
+                       "expected ack %d, advancing next seqno\n", getpid(),
+                       ack_header.flags, ack_header.size, ack_header.checksum, peer->next_seqno);
+                peer->next_seqno = (peer->next_seqno ? 0 : 1);
+                return bytes_sent;
+            }
+                // if incorrect ackno: re-send package
+            else {
+                printf("Incorrect ackno!\n");
+                printf("re-send package\n");
+                d1_send_data(peer, buffer, sz);
+                return -1; // ?
+            }
+        }
+        else {
+            printf("%d: received incorrect size ...\n", getpid());
+            return -1;
+        }
     }
     else {
-         printf("Incorrect ackno!\n");
-         printf("re-send package\n");
-         d1_send_data(peer, buffer, sz);
-         return -1;
+        printf("%d: received incorrect frame ...\n", getpid());
+        return -1;
     }
-
-    // Wait for ACK
-//    int response = d1_wait_ack(peer, packet, PACKET_SIZE);
-//    if (response < 0) {
-//        perror("Error waiting for ACK");
-//        return -1;
-//    }
-
-
-    printf("====== end send data ========\n");
-    return bytes_sent;
 }
