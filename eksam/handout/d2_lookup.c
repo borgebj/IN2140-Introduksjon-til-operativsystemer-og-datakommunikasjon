@@ -47,8 +47,14 @@ int d2_send_request( D2Client* client, uint32_t id )
 
     // 1. Create PacketRequest with given id (in host byte order)
     PacketRequest request;
-    request.type = (TYPE_REQUEST);
+    request.type = /* type_request */
     request.id = id;
+
+    // 2. Konverter til network byte order
+    
+    // 3. ????
+
+    // 4. Send
 
     return 0;
 }
