@@ -152,10 +152,11 @@ int d1_get_peer_info( struct D1Peer* peer, const char* peername, uint16_t server
     return 1;
 }
 
-
 int d1_recv_data(struct D1Peer* peer, char* buffer, size_t sz)
 {
     if (sz < 8) return -1;
+
+    // peer-info
     struct sockaddr_in src_addr = peer->addr;
     socklen_t addr_len = sizeof(struct sockaddr_in);
 
@@ -163,7 +164,7 @@ int d1_recv_data(struct D1Peer* peer, char* buffer, size_t sz)
     int bytes_received = recvfrom(peer->socket, buffer, sz, 0, (struct sockaddr*)&src_addr, &addr_len);
     printf("%d: Received %d bytes from %s\n", getpid(), bytes_received, inet_ntoa(peer->addr.sin_addr));
     if (bytes_received < 0) {
-        perror("recvfrom in recv_data");
+        perror("Error receiving data from socket");
         return -1;
     }
 
@@ -212,8 +213,11 @@ int d1_recv_data(struct D1Peer* peer, char* buffer, size_t sz)
     int correct_checksum = (computed_checksum == header.checksum);
     int correct_size = (bytes_received == header.size);
 
+    static int test = 0;
+
     // if data packet
-    if (header.flags & FLAG_DATA ) {
+    printf("%d: testing if data (%x) is set in flags (%x)\n", getpid(), FLAG_DATA, header.flags);
+    if (header.flags & FLAG_DATA) {
         if (correct_checksum && correct_size) {
             printf("%d: Received a DATA packet with header %x %x %x, size correct, good checksum\n", getpid(), header.flags, header.size, header.checksum);
 
@@ -229,16 +233,18 @@ int d1_recv_data(struct D1Peer* peer, char* buffer, size_t sz)
         }
         else {
             // checksum or size differs, send ack with opposite value
-            printf("Incorrect checksum ...\n");
+            printf("%d: Incorrect %s ...\n", getpid(), (correct_size ? "checksum" : "size"));
             int seqno = (header.flags & SEQNO) ? 0 : 1;
             d1_send_ack(peer, seqno);
-            //TODO: hva skal gjøres her? returne?
+            d1_recv_data(peer, buffer, sz);
+            //TODO: double-check ?
         }
     }
     else {
         printf("%d: Received packet was not data packet ...\n", getpid());
         return -1;
     }
+    return -1;
 }
 
 void d1_send_ack( struct D1Peer* peer, int seqno )
@@ -265,11 +271,6 @@ void d1_send_ack( struct D1Peer* peer, int seqno )
     // sends ACKNO with opposite sequence number back to server
     printf("%d: Sending an ACK packet, acking %d\n", getpid(), seqno);
     sendto(peer->socket, buffer, sz, 0, (struct sockaddr*)&(peer->addr), sizeof(peer->addr));
-}
-
-int d1_wait_ack( D1Peer* peer, char* buffer, size_t sz )
-{
-    return 1;
 }
 
 
@@ -310,7 +311,7 @@ int d1_send_data( D1Peer* peer, char* buffer, size_t sz )
     memcpy(packet + HEADER_SIZE, buffer, sz);
 
     // sends the packet
-    printf("%d: Sending a DATA packet with header %x %x %x, sending bytes %d\n", getpid(), ntohs(header.flags), ntohl(header.size), header.checksum, ntohl(header.size));
+    printf("%d: Sending a DATA packet with header %x %x %x, sending %d bytes\n", getpid(), ntohs(header.flags), ntohl(header.size), header.checksum, ntohl(header.size));
     printf("%d: Sending packet\n", getpid());
     int bytes_sent = sendto(peer->socket, packet, PACKET_SIZE, 0, (struct sockaddr*)&(peer->addr), sizeof(peer->addr));
     if (bytes_sent < 0) {
@@ -354,7 +355,7 @@ int d1_send_data( D1Peer* peer, char* buffer, size_t sz )
 //    printf("\n[ Sending - Ack received info ]\n\n");
 
     // if correct ackno: flip peers next sequence number
-    printf("%d: Testing if ACK (%x) is set in flags (%x)\n", getpid(), FLAG_ACK, ack_header.flags);
+    printf("%d: testing if ACK (%x) is set in flags (%x)\n", getpid(), FLAG_ACK, ack_header.flags);
     if (ack_header.flags & FLAG_ACK) {
         if (correct_size) {
             if (correct_ackno) {
@@ -366,10 +367,10 @@ int d1_send_data( D1Peer* peer, char* buffer, size_t sz )
             }
                 // if incorrect ackno: re-send package
             else {
-                printf("Incorrect ackno!\n");
-                printf("re-send package\n");
+                printf("%d: incorrect ackno ...\n", getpid());
+                printf("%d: re-send package\n", getpid());
                 d1_send_data(peer, buffer, sz);
-                return -1; // ?
+                //TODO: double-check ?
             }
         }
         else {

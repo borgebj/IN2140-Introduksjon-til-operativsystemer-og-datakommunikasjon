@@ -9,21 +9,47 @@
 
 #include "d2_lookup.h"
 
+/**
+ * Creates information required to use server with given name and port
+ * @param server_name name to use
+ * @param server_port port to use
+ * @return a D2Client
+ */
 D2Client* d2_client_create( const char* server_name, uint16_t server_port )
 {
-    /* implement this */
+    //TODO: gjør noe med server name og server.port
+
+    D2Client *client = malloc(sizeof(D2Client));
+    if (client != NULL) {
+        D1Peer *peer = d1_create_client();
+        d1_get_peer_info(peer, server_name, server_port);
+        client->peer = peer;
+        return client;
+    }
     return NULL;
 }
 
+/**
+ * Deletes information and state required to communicate with server
+ * @param client client to delete
+ * @return NULL
+ */
 D2Client* d2_client_delete( D2Client* client )
 {
-    /* implement this */
+    d1_delete(client->peer);
+    free(client);
     return NULL;
 }
 
 int d2_send_request( D2Client* client, uint32_t id )
 {
     /* implement this */
+
+    // 1. Create PacketRequest with given id (in host byte order)
+    PacketRequest request;
+    request.type = (TYPE_REQUEST);
+    request.id = id;
+
     return 0;
 }
 
