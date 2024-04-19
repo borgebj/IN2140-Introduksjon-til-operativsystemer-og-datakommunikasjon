@@ -102,6 +102,8 @@ int d2_recv_response_size( D2Client* client )
     if (packet_type & TYPE_RESPONSE_SIZE) {
         printf("Received response size!\n");
         PacketResponseSize *responseSize = (PacketResponseSize *)buffer;
+        uint16_t packet_size = ntohs(responseSize->size);
+        printf("Size:\t(%d)\t", packet_size); printbits(&packet_size, sizeof(uint16_t));
     }
     else {
         printf("Didnt receive response size :(\n");
