@@ -13,21 +13,18 @@
 
 #include "d1_udp.h"
 
-#define HEADER_SIZE sizeof(D1Header)
+//TODO: debugging - remove
+void printbits(void *n, int size) {
+    char *num = (char *)n;
 
-////TODO: debugging - remove
-//void printbits(void *n, int size) {
-//    char *num = (char *)n;
-//    int i, j;
-//
-//    for (i = size-1; i >= 0; i--) { // itererer gjennom bytes
-//        for (j = 7; j >= 0; j--) {
-//            printf("%c", (num[i] & (1 << j)) ? '1' : '0');
-//        }
-//        printf(" ");
-//    }
-//    printf("\n");
-//}
+    for (int i = size-1; i >= 0; i--) { // itererer gjennom bytes
+        for (int j = 7; j >= 0; j--) {
+            printf("%c", (num[i] & (1 << j)) ? '1' : '0');
+        }
+        printf(" ");
+    }
+    printf("\n");
+}
 
 
 /**
@@ -41,10 +38,17 @@ uint16_t compute_checksum(D1Header header, const char* buffer, size_t sz) {
 
     uint16_t checksum = 0;
 
-    // checksums the haeader-fields
-    checksum ^= header.flags;
-    checksum ^= (uint16_t)(header.size & 0xFFFF); // upper size-field
-    checksum ^= (uint16_t)(header.size >> 16);    // lower size-field
+    // go through every 16 bit using pointer cast to 16-bit int
+    const uint16_t *ptr = (uint16_t *)&header;
+    for (int i = 0; i < (sizeof(D1Header) / sizeof(uint16_t)); ++i) {
+        if (i == 1) continue; // skip checksum
+        checksum ^= ptr[i];
+    }
+
+    // checksums the header-fields
+//    checksum ^= header.flags;
+//    checksum ^= (uint16_t)(header.size & 0xFFFF); // upper size-field
+//    checksum ^= (uint16_t)(header.size >> 16);    // lower size-field
 
     // allocate space for padded_buffer if needed
     const char *padded_buffer = buffer;
@@ -115,11 +119,17 @@ D1Peer* d1_delete( D1Peer* peer )
     return NULL;
 }
 
-// Discover address info for server, store in D1Peer
+/**
+ * Discover address info for server, store in D1Peer
+ * @param peer to put info into
+ * @param peername name to discover ip from
+ * @param server_port port used
+ * @return if success or not
+ */
 int d1_get_peer_info( struct D1Peer* peer, const char* peername, uint16_t server_port )
 {
-    struct sockaddr_in addr;
-    struct in_addr ip_addr;
+    struct sockaddr_in addr; // goes in peer
+    struct in_addr ip_addr;  // goes in addr <- ip goes in here
 
     // convert to IP address if not in dotted
     int wc = inet_pton(AF_INET, peername, &ip_addr.s_addr);
@@ -148,7 +158,6 @@ int d1_get_peer_info( struct D1Peer* peer, const char* peername, uint16_t server
     memcpy(&(peer->addr), &addr, sizeof(addr));
 
     printf("%d: We have resolved server name %s\n", getpid(), peername);
-
     return 1;
 }
 
@@ -283,6 +292,7 @@ int d1_send_data( D1Peer* peer, char* buffer, size_t sz )
     const size_t PACKET_SIZE = (HEADER_SIZE + sz);
 
     // packet for holding header + data (buffer)
+    // packet = [(header)(payload)]
     char packet[PACKET_SIZE];
 
     // creates the header and initializes it
@@ -298,8 +308,8 @@ int d1_send_data( D1Peer* peer, char* buffer, size_t sz )
 //    header.flags |= (peer->next_seqno << 7); // choose seqno based on peers next
 
     // convert to network byte order before computing checksum
-    header.size = htonl(header.size);
     header.flags = htons(header.flags);
+    header.size = htonl(header.size);
 
     // computes the packets checksum
     header.checksum = compute_checksum(header, buffer, sz);
@@ -364,7 +374,7 @@ int d1_send_data( D1Peer* peer, char* buffer, size_t sz )
                 peer->next_seqno = (peer->next_seqno ? 0 : 1);
                 return bytes_sent;
             }
-                // if incorrect ackno: re-send package
+            // if incorrect ackno: re-send package
             else {
                 printf("%d: incorrect ackno ...\n", getpid());
                 printf("%d: re-send package\n", getpid());
