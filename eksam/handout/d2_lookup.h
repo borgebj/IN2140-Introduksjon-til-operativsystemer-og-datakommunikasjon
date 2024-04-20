@@ -49,7 +49,7 @@ typedef struct PacketRequest      PacketRequest;
 
 /* PacketResponseSize packets are sent from the server to the client.
  * They contain a size field that indicates how many NetNode structures
- * the following PacketReponse packets will contain.
+ * the following PacketResponse packets will contain.
  *
  * type and size are in network byte order.
  *

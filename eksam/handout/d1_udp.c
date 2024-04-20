@@ -14,17 +14,17 @@
 #include "d1_udp.h"
 
 //TODO: debugging - remove
-void printbits(void *n, int size) {
-    char *num = (char *)n;
-
-    for (int i = size-1; i >= 0; i--) { // itererer gjennom bytes
-        for (int j = 7; j >= 0; j--) {
-            printf("%c", (num[i] & (1 << j)) ? '1' : '0');
-        }
-        printf(" ");
-    }
-    printf("\n");
-}
+//void printbits(void *n, int size) {
+//    char *num = (char *)n;
+//
+//    for (int i = size-1; i >= 0; i--) { // itererer gjennom bytes
+//        for (int j = 7; j >= 0; j--) {
+//            printf("%c", (num[i] & (1 << j)) ? '1' : '0');
+//        }
+//        printf(" ");
+//    }
+//    printf("\n");
+//}
 
 
 /**

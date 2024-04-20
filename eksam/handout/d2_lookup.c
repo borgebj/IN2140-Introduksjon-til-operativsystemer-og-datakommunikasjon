@@ -12,18 +12,18 @@
 #define REQUEST_SIZE 64
 
 //TODO: debugging - remove
-//void printbits(void *n, int size) {
-//    char *num = (char *)n;
-//    int i, j;
-//
-//    for (i = size-1; i >= 0; i--) { // itererer gjennom bytes
-//        for (j = 7; j >= 0; j--) {
-//            printf("%c", (num[i] & (1 << j)) ? '1' : '0');
-//        }
-//        printf(" ");
-//    }
-//    printf("\n");
-//}
+void printbits(void *n, int size) {
+    char *num = (char *)n;
+    int i, j;
+
+    for (i = size-1; i >= 0; i--) { // itererer gjennom bytes
+        for (j = 7; j >= 0; j--) {
+            printf("%c", (num[i] & (1 << j)) ? '1' : '0');
+        }
+        printf(" ");
+    }
+    printf("\n");
+}
 
 /**
  * Creates information required to use server with given name and port
@@ -57,6 +57,13 @@ D2Client* d2_client_delete( D2Client* client )
 
 int d2_send_request( D2Client* client, uint32_t id )
 {
+    if (id <= 1000) {
+        printf("ID must be >1000 ...\n");
+        return -1;
+    }
+    // TODO: remove, debu
+    printf("\n\n[ send_request ]\n");
+
     // creates PacketRequest, sets and converts its value-fields
     PacketRequest request;
     request.type = htons(TYPE_REQUEST);
@@ -73,9 +80,12 @@ int d2_send_request( D2Client* client, uint32_t id )
     uint16_t pack_type = ntohs(*((uint16_t*)buffer));
     uint16_t pack_empty = *((uint16_t*)(buffer + sizeof(uint16_t)));
     uint32_t pack_id = ntohl(*((uint32_t*)(buffer + 2 * sizeof(uint16_t))));
+
+    printf("\n[ Before sending request, packet: ]\n");
     printf("pack type:\t"); printbits(&pack_type, sizeof(uint16_t));
     printf("pack empty:\t"); printbits(&pack_empty, sizeof(uint16_t));
     printf("pack id:\t"); printbits(&pack_id, sizeof(uint32_t));
+    printf("[ Before sending request, packet: ]\n\n");
 
     int bytes_sent = d1_send_data(client->peer, buffer, REQUEST_SIZE);
     if (bytes_sent < 0) return 0;
@@ -84,8 +94,14 @@ int d2_send_request( D2Client* client, uint32_t id )
 
 int d2_recv_response_size( D2Client* client )
 {
+    // TODO: remove, debug
+    printf("\n[ recv_response_size ]\n");
+
     int ret;
     char buffer[MAX_PACKETSIZE];
+
+    // TODO: remove, deubg
+    printf("\n[ Receiving data ... ]\n");
 
     // receives the data
     ret = d1_recv_data( client->peer, buffer, 1000 );
@@ -100,9 +116,23 @@ int d2_recv_response_size( D2Client* client )
 
     printf("Type:\t"); printbits(&packet_type, sizeof(uint16_t));
     if (packet_type & TYPE_RESPONSE_SIZE) {
-        printf("Received response size!\n");
+
+        // TODO: remove, debug
+        printf("\n[ Received response size ]\n");
+
         PacketResponseSize *responseSize = (PacketResponseSize *)buffer;
         uint16_t packet_size = ntohs(responseSize->size);
+
+        // packet_size = how many NetNode structures that follows
+        // The following PacketResponses contains NetNode as payload
+        // netnode = (32 id, 32 val, 32 num, 32 child list)
+
+        // 1. les packet size
+        // 2. for loop (packet size)
+        // 3. receive response
+        // 4. les NetNode
+
+        // TODO: remove, debug
         printf("Size:\t(%d)\t", packet_size); printbits(&packet_size, sizeof(uint16_t));
     }
     else {
