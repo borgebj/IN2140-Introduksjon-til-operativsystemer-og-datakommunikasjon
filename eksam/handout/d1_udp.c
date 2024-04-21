@@ -40,7 +40,7 @@ uint16_t compute_checksum(D1Header header, const char* buffer, size_t sz) {
 
     // go through every 16 bit using pointer cast to 16-bit int
     const uint16_t *ptr = (uint16_t *)&header;
-    for (int i = 0; i < (sizeof(D1Header) / sizeof(uint16_t)); ++i) {
+    for (size_t i = 0; i < (sizeof(D1Header) / sizeof(uint16_t)); ++i) {
         if (i == 1) continue; // skip checksum
         checksum ^= ptr[i];
     }
@@ -178,7 +178,7 @@ int d1_recv_data(struct D1Peer* peer, char* buffer, size_t sz)
     }
 
     // check if packet is right size
-    if (bytes_received < sizeof(D1Header)) {
+    if (bytes_received < (int)sizeof(D1Header)) {
         printf("Received data is smaller than the header size.\n");
         return -1;
     }
@@ -220,7 +220,7 @@ int d1_recv_data(struct D1Peer* peer, char* buffer, size_t sz)
 
     // compare checksum and size
     int correct_checksum = (computed_checksum == header.checksum);
-    int correct_size = (bytes_received == header.size);
+    int correct_size = (bytes_received == (int)header.size);
 
     // if data packet
     printf("%d: testing if data (%x) is set in flags (%x)\n", getpid(), FLAG_DATA, header.flags);
@@ -351,7 +351,7 @@ int d1_send_data( D1Peer* peer, char* buffer, size_t sz )
     int correct_ackno = (ack_response == expected_seqno);
 
     // compare correct size
-    size_t expected = ack_header.size;
+    int expected = (int)ack_header.size;
     int correct_size = (expected == bytes_received);
 
 //    printf("\n[ Sending - Ack received info ]\n\n");

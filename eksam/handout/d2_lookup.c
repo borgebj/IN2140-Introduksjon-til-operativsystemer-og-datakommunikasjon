@@ -146,7 +146,6 @@ int d2_recv_response( D2Client* client, char* buffer, size_t sz )
 
         // cast to Response to retrieve data
         PacketResponse *response = (PacketResponse *)buffer;
-        uint16_t type = ntohs(response->type);
         uint16_t payload_size = ntohs(response->payload_size);
 
         // check size retrieved
@@ -159,10 +158,11 @@ int d2_recv_response( D2Client* client, char* buffer, size_t sz )
             // retrieve and convert byte order from 32-bit pointer
             node.id = *ptr++;
             node.value = *ptr++;
-            node.num_children = ntohl(*ptr++); //TODO: <-- fjern ntohl !
+            node.num_children = *ptr++;
+            uint32_t nums = ntohl(node.num_children); // representing how many children
 
             // read in children-ids
-            for (int i = 0; i < node.num_children; ++i) {
+            for (int i = 0; i < nums; ++i) {
                 node.child_id[i] = *ptr++;
             }
 
@@ -177,42 +177,43 @@ int d2_recv_response( D2Client* client, char* buffer, size_t sz )
             printbits(&(uint16_t){ntohs(*bruh16++)}, sizeof(uint16_t));
             printf("Size:\t\t(%d)\t", ntohs(*bruh16));
             printbits(&(uint16_t){ntohs(*bruh16++)}, sizeof(uint16_t));
-
-
             uint32_t *bruh32 = (uint32_t *)bruh16;
             printf("========== [ Node ] ========================================\n");
             printf("ID:\t\t(%d)\t", ntohl(*bruh32));
             printbits(&(uint32_t){ntohl(*bruh32++)}, sizeof(uint32_t));
-
             printf("Value:\t\t(%d)\t", ntohl(*bruh32));
             printbits(&(uint32_t){ntohl(*bruh32++)}, sizeof(uint32_t));
-
-            printf("Num_children:\t(%d)\t", *bruh32);
-            printbits(bruh32, sizeof(uint32_t));
-
-
-            uint32_t children = *bruh32++;
+            printf("Num_children:\t(%d)\t", ntohl(*bruh32));
+            printbits(&(uint32_t){ntohl(*bruh32)}, sizeof(uint32_t));
+            uint32_t children = ntohl(*bruh32++);
             for (int i=0; i < children; i++) {
                 printf("Child %d:\t(%d)\t", i, ntohl(*bruh32));
                 printbits(&(uint32_t){ntohl(*bruh32++)}, sizeof(uint32_t));
             }
-            printf("========== [ Node ] ========================================\n\n");
+            printf("============================================================\n\n");
             //TODO: remove, debug
 
+            // in case of success: returns bytes received
             return bytes_received;
         }
     }
 
+    // fail-case: returns 0
     return 0;
 }
 
 LocalTreeStore* d2_alloc_local_tree( int num_nodes )
 {
-    //TODO: allocate for nodes??
-
     LocalTreeStore *tree = malloc(sizeof(LocalTreeStore));
     if (tree != NULL) {
         tree->number_of_nodes = num_nodes;
+
+        // allocate space for NetNodes
+        tree->nodes = malloc(num_nodes * sizeof(NetNode));
+        if (tree->nodes == NULL) {
+            free(tree);
+            return NULL;
+        }
         return tree;
     }
     return NULL;
@@ -220,7 +221,13 @@ LocalTreeStore* d2_alloc_local_tree( int num_nodes )
 
 void  d2_free_local_tree( LocalTreeStore* nodes )
 {
-    /* implement this */
+    // Deletes tree by freeing allocated space
+    if (nodes != NULL) {
+        if (nodes->nodes != NULL) {
+            free(nodes->nodes);
+        }
+        free(nodes);
+    }
 }
 
 int d2_add_to_local_tree( LocalTreeStore* nodes_out, int node_idx, char* buffer, int buflen )

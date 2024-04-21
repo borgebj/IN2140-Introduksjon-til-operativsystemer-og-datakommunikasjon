@@ -6,6 +6,7 @@
 #define D2_LOOKUP_MOD_H
 
 #include "d1_udp.h"
+#include "d2_lookup.h" // for using NetNode
 
 struct D2Client
 {
@@ -17,6 +18,7 @@ typedef struct D2Client D2Client;
 struct LocalTreeStore
 {
     int number_of_nodes;
+    struct NetNode *nodes;
 };
 
 typedef struct LocalTreeStore LocalTreeStore;
