@@ -58,7 +58,7 @@ int main( int argc, char* argv[] )
     printf( "%d: D2 send request to look up id %d\n", getpid(), student_id );
 
     /* Receive a PacketResponseSize packet from the server.
-     * If ret is positive, it provide the number of NetNodes that the server
+     * If ret is positive, it provides the number of NetNodes that the server
      * is going to send.
      */
     ret = d2_recv_response_size( client );

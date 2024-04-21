@@ -89,7 +89,7 @@ struct PacketResponse
     uint16_t type;
     uint16_t payload_size;
 };
-typedef struct PacketResponse     PacketResponse;
+typedef struct PacketResponse PacketResponse;
 
 /* NetNode structures are nodes of a tree. The root of the tree does always
  * have the id==0, and the other nodes have ids that are assigned in depth

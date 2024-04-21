@@ -76,16 +76,15 @@ int d2_send_request( D2Client* client, uint32_t id )
     memcpy(buffer + sizeof(uint16_t), &empty, sizeof(uint16_t));
     memcpy(buffer + sizeof(uint32_t), &request.id, sizeof(uint32_t));
 
-    // TODO: remove, debug
-    uint16_t pack_type = ntohs(*((uint16_t*)buffer));
-    uint16_t pack_empty = *((uint16_t*)(buffer + sizeof(uint16_t)));
-    uint32_t pack_id = ntohl(*((uint32_t*)(buffer + 2 * sizeof(uint16_t))));
-
-    printf("\n[ Before sending request, packet: ]\n");
-    printf("pack type:\t"); printbits(&pack_type, sizeof(uint16_t));
-    printf("pack empty:\t"); printbits(&pack_empty, sizeof(uint16_t));
-    printf("pack id:\t"); printbits(&pack_id, sizeof(uint32_t));
-    printf("[ Before sending request, packet: ]\n\n");
+//    // TODO: remove, debug
+//    uint16_t pack_type = ntohs(*((uint16_t*)buffer));
+//    uint16_t pack_empty = *((uint16_t*)(buffer + sizeof(uint16_t)));
+//    uint32_t pack_id = ntohl(*((uint32_t*)(buffer + 2 * sizeof(uint16_t))));
+//    printf("\n[ Before sending request, packet: ]\n");
+//    printf("pack type:\t"); printbits(&pack_type, sizeof(uint16_t));
+//    printf("pack empty:\t"); printbits(&pack_empty, sizeof(uint16_t));
+//    printf("pack id:\t"); printbits(&pack_id, sizeof(uint32_t));
+//    printf("[ Before sending request, packet: ]\n\n");
 
     int bytes_sent = d1_send_data(client->peer, buffer, REQUEST_SIZE);
     if (bytes_sent < 0) return 0;
@@ -94,32 +93,24 @@ int d2_send_request( D2Client* client, uint32_t id )
 
 int d2_recv_response_size( D2Client* client )
 {
-    // TODO: remove, debug
-    printf("\n[ recv_response_size ]\n");
-
-    int ret;
+    // buffer for receiving response
     char buffer[MAX_PACKETSIZE];
 
-    // TODO: remove, deubg
-    printf("\n[ Receiving data ... ]\n");
-
-    // receives the data
-    ret = d1_recv_data( client->peer, buffer, 1000 );
-    if( ret < 0 )
-    {
-        d1_delete( client->peer );
+    // receives the PacketResponseSize inside the buffer
+    int ret = d1_recv_data(client->peer, buffer, 1024);
+    if( ret < 0 ) {
+        printf("Failed to receive data packet ...\n");
         return -1;
     }
 
+    // parse type from PacketHeader-cast
     PacketHeader *header = (PacketHeader *)buffer;
     uint16_t packet_type = ntohs(header->type);
 
     printf("Type:\t"); printbits(&packet_type, sizeof(uint16_t));
     if (packet_type & TYPE_RESPONSE_SIZE) {
 
-        // TODO: remove, debug
-        printf("\n[ Received response size ]\n");
-
+        // cast to responseSize to retrieve the size
         PacketResponseSize *responseSize = (PacketResponseSize *)buffer;
         uint16_t packet_size = ntohs(responseSize->size);
 
@@ -127,32 +118,103 @@ int d2_recv_response_size( D2Client* client )
         // The following PacketResponses contains NetNode as payload
         // netnode = (32 id, 32 val, 32 num, 32 child list)
 
-        // 1. les packet size
-        // 2. for loop (packet size)
-        // 3. receive response
-        // 4. les NetNode
-
-        // TODO: remove, debug
-        printf("Size:\t(%d)\t", packet_size); printbits(&packet_size, sizeof(uint16_t));
+        printf("%d: Received a ResponseSize of %d\n", getpid(), packet_size);
+        return packet_size;
     }
     else {
-        printf("Didnt receive response size :(\n");
+        printf("Failed to receive response size ...\n");
+        return -1;
     }
-
-    exit(-1);
-    /* implement this */
-    return 0;
 }
 
 int d2_recv_response( D2Client* client, char* buffer, size_t sz )
 {
-    /* implement this */
+    // receives the PacketResponse inside the given buffer
+    int bytes_received = d1_recv_data(client->peer, buffer, sz);
+    if( bytes_received < 0 ) {
+        printf("Failed to receive data packet ...\n");
+        return -1;
+    }
+
+    // parse type from PacketHeader-cast
+    PacketHeader *header = (PacketHeader *)buffer;
+    uint16_t packet_type = ntohs(header->type);
+
+    // check correct type
+    //TODO: or TPYE_LAST_RESPONSE ?
+    if (packet_type == TYPE_RESPONSE || packet_type == TYPE_LAST_RESPONSE) {
+
+        // cast to Response to retrieve data
+        PacketResponse *response = (PacketResponse *)buffer;
+        uint16_t type = ntohs(response->type);
+        uint16_t payload_size = ntohs(response->payload_size);
+
+        // check size retrieved
+        if (payload_size > 0) {
+
+            // Parse payload buffer into NetNode structure using 32-bit pointer
+            NetNode node;
+            uint32_t *ptr = (uint32_t *)(buffer + sizeof(PacketResponse));
+
+            // retrieve and convert byte order from 32-bit pointer
+            node.id = *ptr++;
+            node.value = *ptr++;
+            node.num_children = ntohl(*ptr++); //TODO: <-- fjern ntohl !
+
+            // read in children-ids
+            for (int i = 0; i < node.num_children; ++i) {
+                node.child_id[i] = *ptr++;
+            }
+
+            // put PacketResponse and NetNode into buffer -> buffer = [(response)(netnode)]
+            memcpy(buffer, response, sizeof(PacketResponse));
+            memcpy(buffer + sizeof(PacketResponse), &node, payload_size);
+
+            //TODO: remove, debug
+            uint16_t *bruh16 = (uint16_t *)buffer;
+            printf("\n========== [ Header ] ===================================++===\n");
+            printf("Flag:\t\t\t");
+            printbits(&(uint16_t){ntohs(*bruh16++)}, sizeof(uint16_t));
+            printf("Size:\t\t(%d)\t", ntohs(*bruh16));
+            printbits(&(uint16_t){ntohs(*bruh16++)}, sizeof(uint16_t));
+
+
+            uint32_t *bruh32 = (uint32_t *)bruh16;
+            printf("========== [ Node ] ========================================\n");
+            printf("ID:\t\t(%d)\t", ntohl(*bruh32));
+            printbits(&(uint32_t){ntohl(*bruh32++)}, sizeof(uint32_t));
+
+            printf("Value:\t\t(%d)\t", ntohl(*bruh32));
+            printbits(&(uint32_t){ntohl(*bruh32++)}, sizeof(uint32_t));
+
+            printf("Num_children:\t(%d)\t", *bruh32);
+            printbits(bruh32, sizeof(uint32_t));
+
+
+            uint32_t children = *bruh32++;
+            for (int i=0; i < children; i++) {
+                printf("Child %d:\t(%d)\t", i, ntohl(*bruh32));
+                printbits(&(uint32_t){ntohl(*bruh32++)}, sizeof(uint32_t));
+            }
+            printf("========== [ Node ] ========================================\n\n");
+            //TODO: remove, debug
+
+            return bytes_received;
+        }
+    }
+
     return 0;
 }
 
 LocalTreeStore* d2_alloc_local_tree( int num_nodes )
 {
-    /* implement this */
+    //TODO: allocate for nodes??
+
+    LocalTreeStore *tree = malloc(sizeof(LocalTreeStore));
+    if (tree != NULL) {
+        tree->number_of_nodes = num_nodes;
+        return tree;
+    }
     return NULL;
 }
 
