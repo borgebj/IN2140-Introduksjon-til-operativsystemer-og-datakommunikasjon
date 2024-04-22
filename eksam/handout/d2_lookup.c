@@ -12,18 +12,18 @@
 #define REQUEST_SIZE 64
 
 //TODO: debugging - remove
-void printbits(void *n, int size) {
-    char *num = (char *)n;
-    int i, j;
-
-    for (i = size-1; i >= 0; i--) { // itererer gjennom bytes
-        for (j = 7; j >= 0; j--) {
-            printf("%c", (num[i] & (1 << j)) ? '1' : '0');
-        }
-        printf(" ");
-    }
-    printf("\n");
-}
+//void printbits(void *n, int size) {
+//    char *num = (char *)n;
+//    int i, j;
+//
+//    for (i = size-1; i >= 0; i--) { // itererer gjennom bytes
+//        for (j = 7; j >= 0; j--) {
+//            printf("%c", (num[i] & (1 << j)) ? '1' : '0');
+//        }
+//        printf(" ");
+//    }
+//    printf("\n");
+//}
 
 /**
  * Creates information required to use server with given name and port
@@ -61,7 +61,7 @@ int d2_send_request( D2Client* client, uint32_t id )
         printf("ID must be >1000 ...\n");
         return -1;
     }
-    // TODO: remove, debu
+    // TODO: remove, debug
     printf("\n\n[ send_request ]\n");
 
     // creates PacketRequest, sets and converts its value-fields
