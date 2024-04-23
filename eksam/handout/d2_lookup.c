@@ -12,18 +12,18 @@
 #define REQUEST_SIZE 64
 
 //TODO: debugging - remove
-//void printbits(void *n, int size) {
-//    char *num = (char *)n;
-//    int i, j;
-//
-//    for (i = size-1; i >= 0; i--) { // itererer gjennom bytes
-//        for (j = 7; j >= 0; j--) {
-//            printf("%c", (num[i] & (1 << j)) ? '1' : '0');
-//        }
-//        printf(" ");
-//    }
-//    printf("\n");
-//}
+void printbits(void *n, int size) {
+    char *num = (char *)n;
+    int i, j;
+
+    for (i = size-1; i >= 0; i--) { // itererer gjennom bytes
+        for (j = 7; j >= 0; j--) {
+            printf("%c", (num[i] & (1 << j)) ? '1' : '0');
+        }
+        printf(" ");
+    }
+    printf("\n");
+}
 
 /**
  * Creates information required to use server with given name and port
@@ -170,7 +170,7 @@ int d2_recv_response( D2Client* client, char* buffer, size_t sz )
             memcpy(buffer, response, sizeof(PacketResponse));
             memcpy(buffer + sizeof(PacketResponse), &node, payload_size);
 
-            //TODO: remove, debug
+//            //TODO: remove, debug
             uint16_t *bruh16 = (uint16_t *)buffer;
             printf("\n========== [ Header ] ===================================++===\n");
             printf("Flag:\t\t\t");
@@ -191,7 +191,14 @@ int d2_recv_response( D2Client* client, char* buffer, size_t sz )
                 printbits(&(uint32_t){ntohl(*bruh32++)}, sizeof(uint32_t));
             }
             printf("============================================================\n\n");
-            //TODO: remove, debug
+//            //TODO: remove, debug
+
+//            char* payload = &buffer[sizeof(PacketResponse)];
+//            NetNode *net = (NetNode *)payload;
+//            printf("ID:\t\t"); printbits(&(uint16_t){ntohs(net->id)}, sizeof(uint32_t));
+//            printf("Value:\t(%d)\t", ntohs(net->value)); printbits(&(uint32_t){ntohs(net->value)}, sizeof(uint16_t));
+//            printf("Nums:\t(%d)\t", ntohs(net->num_children)); printbits(&(uint16_t){ntohs(net->num_children)}, sizeof(uint16_t));
+//
 
             // in case of success: returns bytes received
             return bytes_received;
@@ -232,6 +239,29 @@ void  d2_free_local_tree( LocalTreeStore* nodes )
 
 int d2_add_to_local_tree( LocalTreeStore* nodes_out, int node_idx, char* buffer, int buflen )
 {
+    printf("\n\n[ Add to tree ]n\n");
+    printf("Index: %d\n", node_idx);
+    printf("Buflen: %d byes\n", buflen);
+
+
+    //TODO: remove, debug
+    uint32_t *node_ptr = (uint32_t *)buffer;
+    printf("========== [ Node ] ========================================\n");
+    printf("ID:\t\t(%d)\t", ntohl(*node_ptr));
+    printbits(&(uint32_t){ntohl(*node_ptr++)}, sizeof(uint32_t));
+    printf("Value:\t\t(%d)\t", ntohl(*node_ptr));
+    printbits(&(uint32_t){ntohl(*node_ptr++)}, sizeof(uint32_t));
+    printf("Num_children:\t(%d)\t", ntohl(*node_ptr));
+    printbits(&(uint32_t){ntohl(*node_ptr)}, sizeof(uint32_t));
+    uint32_t children = ntohl(*node_ptr++);
+    for (int i=0; i < children; i++) {
+        printf("Child %d:\t(%d)\t", i, ntohl(*node_ptr));
+        printbits(&(uint32_t){ntohl(*node_ptr++)}, sizeof(uint32_t));
+    }
+    printf("============================================================\n\n");
+    //TODO: remove, debug
+
+    exit(-1);
     /* implement this */
     return 0;
 }
