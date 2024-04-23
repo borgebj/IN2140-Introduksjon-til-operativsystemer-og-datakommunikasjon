@@ -11,8 +11,6 @@
 
 #define REQUEST_SIZE 64
 
-int tree_nodes = 0;
-
 //TODO: debugging - remove
 void printbits(void *n, int size) {
     char *num = (char *)n;
@@ -162,16 +160,13 @@ int d2_recv_response( D2Client* client, char* buffer, size_t sz )
         uint16_t payload_size = ntohs(response->payload_size);
 
         // check size retrieved
-        if (payload_size > 0) {
+        if (payload_size > 0 && bytes_received == payload_size) {
 
-            int bytes_seen = 0;
-            int remaining_bytes = payload_size - sizeof(PacketResponse);
+            size_t bytes_seen = 0;
+            size_t remaining_bytes = payload_size - sizeof(PacketResponse);
             uint32_t *ptr = (uint32_t *)(buffer + sizeof(PacketResponse));
 
-            // puts the header into buffer
-            memcpy(buffer, response, sizeof(PacketResponse));
-
-            // Iterate through the payload to parse NetNode structures
+            // Parse each node from buffer based on how many bytes
             while (remaining_bytes >= sizeof(uint32_t) * 3) {
                 NetNode node;
 
@@ -186,31 +181,21 @@ int d2_recv_response( D2Client* client, char* buffer, size_t sz )
                     node.child_id[i] = ntohl(*ptr++);
                 }
 
-                // Print the parsed NetNode structure
-                printf("\nNetNode id: %u\n", node.id);
-                printf("NetNode value: %u\n", node.value);
-                printf("NetNode num_children: %u\n", node.num_children);
-                printf("NetNode child_id: ");
-                for (size_t i = 0; i < num_children && i < 5; ++i) {
-                    printf(" '%u' ", node.child_id[i]);
-                }
-                printf("\n");
+//                // Print the parsed NetNode structure
+//                printf("\nNetNode id: %u\n", node.id);
+//                printf("NetNode value: %u\n", node.value);
+//                printf("NetNode num_children: %u\n", node.num_children);
+//                printf("NetNode child_id: ");
+//                for (size_t i = 0; i < num_children && i < 5; ++i) {
+//                    printf(" '%u' ", node.child_id[i]);
+//                }
+//                printf("\n");
 
-                //TODO: add each node to buffer
-//                memcpy(buffer + bytes_seen, &node, sizeof(NetNode));
-
-                // Update bytes_seen and remaining_bytes, 3* for id, value and num_children
-                bytes_seen += sizeof(uint32_t) * (3 + num_children); // 3 fields (id, value, num_children) + num_children child_id fields
+                bytes_seen += sizeof(NetNode);
                 remaining_bytes -= sizeof(uint32_t) * (3 + num_children);
             }
 
-            // Check for remaining bytes beyond what is expected for a complete NetNode
-            if (remaining_bytes > 0) {
-                printf("Remaining bytes in d2_recv_response, possible data loss\n");
-            }
-
-            printf("=======================\n\n");
-            // in case of success: returns bytes received
+            // in case of success: fill new buffer and returns bytes received
             return bytes_received;
         }
     }
@@ -224,7 +209,6 @@ LocalTreeStore* d2_alloc_local_tree( int num_nodes )
     LocalTreeStore *tree = malloc(sizeof(LocalTreeStore));
     if (tree != NULL) {
         tree->number_of_nodes = num_nodes;
-        tree_nodes = num_nodes;
 
         // allocate space for NetNodes
         printf("%d: Allocating space for %d nodes\n", getpid(), num_nodes);
@@ -249,16 +233,57 @@ void  d2_free_local_tree( LocalTreeStore* nodes )
     }
 }
 
+/**
+ * Adds nodes in buffer to the local tree
+ * @param nodes tree to contain nodes
+ * @param node_idx
+ * @param buffer payload containing bytes with node-info
+ * @param buflen the length of the payload
+ * @return
+ */
 int d2_add_to_local_tree( LocalTreeStore* nodes, int node_idx, char* buffer, int buflen )
 {
-    printf("\n\n[ Add to tree ]\n");
+    printf("\n\n==============================\n");
+    printf("[ Add to tree ]\n");
     printf("Index: %d\n", node_idx);
-    printf("Buflen: %d byes\n", buflen);
-    printf("nodes_out has space for %d nodes\n", nodes->number_of_nodes);
-    printf("Node size: %lu\n", sizeof(NetNode));
-    printf("Bytes received: %d\n", buflen);
+    printf("max nodes: %d\n", nodes->number_of_nodes);
+    printf("------------------------------");
 
-    /* implement this */
+    // Pointer to traverse the buffer
+    uint32_t *ptr = (uint32_t *)buffer;
+
+    // Iterate through the buffer until no more bytes are left
+    while ((char*)ptr < buffer + buflen) {
+        NetNode node;
+
+        // Convert byte order using ntohl for each field
+        node.id = ntohl(*ptr++);
+        node.value = ntohl(*ptr++);
+        node.num_children = ntohl(*ptr++);
+
+        uint32_t num_children = node.num_children;
+        for (size_t j = 0; j < num_children && j < 5; ++j) {
+            node.child_id[j] = ntohl(*ptr++);
+        }
+
+
+
+        //TODO: remove
+        printf("\nNetNode id:\t\t%u\n", node.id);
+        printf("NetNode value:\t\t%u\n", node.value);
+        printf("NetNode num_children:\t%u\n", node.num_children);
+        printf("NetNode child_id:\t");
+        for (size_t j = 0; j < node.num_children && j < 5; ++j) {
+            printf("'%u' ", node.child_id[j]);
+        }
+        printf("\n");
+
+        // Here you can add the node to your local tree if needed
+        // Example: nodes->array[node_idx + i] = node;
+    }
+//    exit(-1);
+
+    printf("==============================\n\n");
     return 0;
 }
 
