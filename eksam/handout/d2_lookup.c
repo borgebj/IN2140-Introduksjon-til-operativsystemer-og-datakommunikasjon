@@ -269,7 +269,8 @@ int d2_add_to_local_tree( LocalTreeStore* nodes, int node_idx, char* buffer, int
 
 
         //TODO: remove
-        printf("\nNetNode id:\t\t%u\n", node.id);
+        printf("\nIndex:\t\t%d\n", node_idx);
+        printf("NetNode id:\t\t%u\n", node.id);
         printf("NetNode value:\t\t%u\n", node.value);
         printf("NetNode num_children:\t%u\n", node.num_children);
         printf("NetNode child_id:\t");
@@ -278,17 +279,22 @@ int d2_add_to_local_tree( LocalTreeStore* nodes, int node_idx, char* buffer, int
         }
         printf("\n");
 
-        // Here you can add the node to your local tree if needed
-        // Example: nodes->array[node_idx + i] = node;
+        nodes->nodes[node_idx++] = node;
     }
-//    exit(-1);
 
     printf("==============================\n\n");
-    return 0;
+    return node_idx;
 }
 
 void d2_print_tree( LocalTreeStore* nodes_out )
 {
+    for (int i = 0; i < nodes_out->number_of_nodes; ++i) {
+        NetNode node = nodes_out->nodes[i];
+
+        printf("\n==========================\n");
+        printf("Id:\t(%d)\n", node.id);
+        printf("Val:\t(%d)\n", node.value);
+    }
     /* implement this */
 }
 

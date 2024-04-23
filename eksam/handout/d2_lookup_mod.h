@@ -17,7 +17,7 @@ typedef struct D2Client D2Client;
 struct LocalTreeStore
 {
     int number_of_nodes;
-    struct NetNode *nodes;
+    struct NetNode *nodes; // array
 };
 typedef struct LocalTreeStore LocalTreeStore;
 
