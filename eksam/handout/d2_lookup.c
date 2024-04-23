@@ -11,6 +11,8 @@
 
 #define REQUEST_SIZE 64
 
+int tree_nodes = 0;
+
 //TODO: debugging - remove
 void printbits(void *n, int size) {
     char *num = (char *)n;
@@ -123,7 +125,7 @@ int d2_recv_response_size( D2Client* client )
     PacketHeader *header = (PacketHeader *)buffer;
     uint16_t packet_type = ntohs(header->type);
 
-    printf("Type:\t"); printbits(&packet_type, sizeof(uint16_t));
+    // checks for right packet-type
     if (packet_type & TYPE_RESPONSE_SIZE) {
 
         // cast to responseSize to retrieve the size
@@ -162,48 +164,52 @@ int d2_recv_response( D2Client* client, char* buffer, size_t sz )
         // check size retrieved
         if (payload_size > 0) {
 
-            // Parse payload buffer into NetNode structure using 32-bit pointer
-            NetNode node;
+            int bytes_seen = 0;
+            int remaining_bytes = payload_size - sizeof(PacketResponse);
             uint32_t *ptr = (uint32_t *)(buffer + sizeof(PacketResponse));
 
-            // retrieve and convert byte order from 32-bit pointer
-            node.id = *ptr++;
-            node.value = *ptr++;
-            node.num_children = *ptr++;
-
-            // read in children-ids
-            uint32_t nums = ntohl(node.num_children); // representing how many children
-            for (size_t i = 0; i < nums; ++i) {
-                node.child_id[i] = *ptr++;
-            }
-
-            // put PacketResponse and NetNode into buffer -> buffer = [(response)(netnode)]
+            // puts the header into buffer
             memcpy(buffer, response, sizeof(PacketResponse));
-            memcpy(buffer + sizeof(PacketResponse), &node, payload_size);
 
-//            //TODO: remove, debug
-            uint16_t *bruh16 = (uint16_t *)buffer;
-            printf("\n========== [ Header ] ===================================++===\n");
-            printf("Flag:\t\t\t");
-            printbits(&(uint16_t){ntohs(*bruh16++)}, sizeof(uint16_t));
-            printf("Size:\t\t(%d)\t", ntohs(*bruh16));
-            printbits(&(uint16_t){ntohs(*bruh16++)}, sizeof(uint16_t));
-            uint32_t *bruh32 = (uint32_t *)bruh16;
-            printf("========== [ Node ] ========================================\n");
-            printf("ID:\t\t(%d)\t", ntohl(*bruh32));
-            printbits(&(uint32_t){ntohl(*bruh32++)}, sizeof(uint32_t));
-            printf("Value:\t\t(%d)\t", ntohl(*bruh32));
-            printbits(&(uint32_t){ntohl(*bruh32++)}, sizeof(uint32_t));
-            printf("Num_children:\t(%d)\t", ntohl(*bruh32));
-            printbits(&(uint32_t){ntohl(*bruh32)}, sizeof(uint32_t));
-            uint32_t children = ntohl(*bruh32++);
-            for (size_t i=0; i < children; i++) {
-                printf("Child %zu:\t(%d)\t", i, ntohl(*bruh32));
-                printbits(&(uint32_t){ntohl(*bruh32++)}, sizeof(uint32_t));
+            // Iterate through the payload to parse NetNode structures
+            while (remaining_bytes >= sizeof(uint32_t) * 3) {
+                NetNode node;
+
+                // Retrieve and convert byte order from payload buffer
+                node.id = ntohl(*ptr++);
+                node.value = ntohl(*ptr++);
+                node.num_children = ntohl(*ptr++);
+
+                // Read in children-ids
+                uint32_t num_children = node.num_children;
+                for (size_t i = 0; i < num_children && i < 5; ++i) {
+                    node.child_id[i] = ntohl(*ptr++);
+                }
+
+                // Print the parsed NetNode structure
+                printf("\nNetNode id: %u\n", node.id);
+                printf("NetNode value: %u\n", node.value);
+                printf("NetNode num_children: %u\n", node.num_children);
+                printf("NetNode child_id: ");
+                for (size_t i = 0; i < num_children && i < 5; ++i) {
+                    printf(" '%u' ", node.child_id[i]);
+                }
+                printf("\n");
+
+                //TODO: add each node to buffer
+//                memcpy(buffer + bytes_seen, &node, sizeof(NetNode));
+
+                // Update bytes_seen and remaining_bytes, 3* for id, value and num_children
+                bytes_seen += sizeof(uint32_t) * (3 + num_children); // 3 fields (id, value, num_children) + num_children child_id fields
+                remaining_bytes -= sizeof(uint32_t) * (3 + num_children);
             }
-            printf("============================================================\n\n");
-//            //TODO: remove, debug
 
+            // Check for remaining bytes beyond what is expected for a complete NetNode
+            if (remaining_bytes > 0) {
+                printf("Remaining bytes in d2_recv_response, possible data loss\n");
+            }
+
+            printf("=======================\n\n");
             // in case of success: returns bytes received
             return bytes_received;
         }
@@ -218,8 +224,10 @@ LocalTreeStore* d2_alloc_local_tree( int num_nodes )
     LocalTreeStore *tree = malloc(sizeof(LocalTreeStore));
     if (tree != NULL) {
         tree->number_of_nodes = num_nodes;
+        tree_nodes = num_nodes;
 
         // allocate space for NetNodes
+        printf("%d: Allocating space for %d nodes\n", getpid(), num_nodes);
         tree->nodes = malloc(num_nodes * sizeof(NetNode));
         if (tree->nodes == NULL) {
             free(tree);
@@ -241,31 +249,15 @@ void  d2_free_local_tree( LocalTreeStore* nodes )
     }
 }
 
-int d2_add_to_local_tree( LocalTreeStore* nodes_out, int node_idx, char* buffer, int buflen )
+int d2_add_to_local_tree( LocalTreeStore* nodes, int node_idx, char* buffer, int buflen )
 {
-    printf("\n\n[ Add to tree ]n\n");
+    printf("\n\n[ Add to tree ]\n");
     printf("Index: %d\n", node_idx);
     printf("Buflen: %d byes\n", buflen);
+    printf("nodes_out has space for %d nodes\n", nodes->number_of_nodes);
+    printf("Node size: %lu\n", sizeof(NetNode));
+    printf("Bytes received: %d\n", buflen);
 
-
-    //TODO: remove, debug
-    uint32_t *node_ptr = (uint32_t *)buffer;
-    printf("========== [ Node ] ========================================\n");
-    printf("ID:\t\t(%d)\t", ntohl(*node_ptr));
-    printbits(&(uint32_t){ntohl(*node_ptr++)}, sizeof(uint32_t));
-    printf("Value:\t\t(%d)\t", ntohl(*node_ptr));
-    printbits(&(uint32_t){ntohl(*node_ptr++)}, sizeof(uint32_t));
-    printf("Num_children:\t(%d)\t", ntohl(*node_ptr));
-    printbits(&(uint32_t){ntohl(*node_ptr)}, sizeof(uint32_t));
-    uint32_t children = ntohl(*node_ptr++);
-    for (int i=0; i < children; i++) {
-        printf("Child %d:\t(%d)\t", i, ntohl(*node_ptr));
-        printbits(&(uint32_t){ntohl(*node_ptr++)}, sizeof(uint32_t));
-    }
-    printf("============================================================\n\n");
-    //TODO: remove, debug
-
-    exit(-1);
     /* implement this */
     return 0;
 }
