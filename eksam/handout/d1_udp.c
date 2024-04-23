@@ -195,6 +195,7 @@ int d1_recv_data(struct D1Peer* peer, char* buffer, size_t sz)
     // calculate checksum using extracted payload
     uint16_t computed_checksum = compute_checksum(header, calc_payload, PAYLOAD_SIZE);
 
+    //TODO: remove
 //    printf("\n\n=======[ Received info ]=======\n\n");
 //    header.flags = ntohs(header.flags); header.size = ntohl(header.size);
 //    printf("Flags:\t\t(%x)\t", header.flags); printbits(&header.flags, sizeof(uint16_t));
@@ -203,6 +204,7 @@ int d1_recv_data(struct D1Peer* peer, char* buffer, size_t sz)
 //    printf("\nCalc. checksum: (%x)\t", computed_checksum); printbits(&computed_checksum, sizeof(uint16_t));
 //    header.flags = htons(header.flags); header.size = htonl(header.size);
 //    printf("\n=======[ Received info ]=======\n\n");
+
 
     // convert to host byte order
     header.flags = htons(header.flags);
@@ -330,7 +332,8 @@ int d1_send_data( D1Peer* peer, char* buffer, size_t sz )
     // general error checks
     if (sz > 1016 || peer == NULL || buffer == NULL || sz == 0) return -1;
 
-    printf("\n[>> Sending: '%.*s' <<]\n\n", (int)sz, buffer);
+    //TODO: remove
+//    printf("\n[>> Sending: '%.*s' <<]\n\n", (int)sz, buffer);
 
     // declares sizes
     const size_t PACKET_SIZE = (HEADER_SIZE + sz);
@@ -370,6 +373,7 @@ int d1_send_data( D1Peer* peer, char* buffer, size_t sz )
         return -1;
     }
 
+    //TODO: remove
 //    printf("\n[ Sending - packet info ]\n");
 //    D1Header *test = (D1Header *)packet;
 //    test->flags = ntohs(test->flags); test->size = ntohl(test->size);

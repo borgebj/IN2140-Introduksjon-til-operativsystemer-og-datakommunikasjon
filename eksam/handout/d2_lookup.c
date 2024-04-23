@@ -36,7 +36,17 @@ D2Client* d2_client_create( const char* server_name, uint16_t server_port )
     D2Client *client = malloc(sizeof(D2Client));
     if (client != NULL) {
         D1Peer *peer = d1_create_client();
-        d1_get_peer_info(peer, server_name, server_port);
+        if ( !peer ) {
+            printf( "Failed to create D1 client.\n" );
+            return NULL;
+        }
+
+        int ret = d1_get_peer_info(peer, server_name, server_port);
+        if( ret == 0 ) {
+            printf( "Failed to resolve the name for %s:%d\n", server_name, server_port);
+            d1_delete(peer);
+            return NULL;
+        }
         client->peer = peer;
         return client;
     }
@@ -55,14 +65,19 @@ D2Client* d2_client_delete( D2Client* client )
     return NULL;
 }
 
+/**
+ * Sends a D2 requests through the given client
+ * Contains header-type and id.
+ * @param client containing info about peer
+ * @param id id to send through client in header
+ * @return > 0 if success, <= 0 if error
+ */
 int d2_send_request( D2Client* client, uint32_t id )
 {
     if (id <= 1000) {
         printf("ID must be >1000 ...\n");
         return -1;
     }
-    // TODO: remove, debug
-    printf("\n\n[ send_request ]\n");
 
     // creates PacketRequest, sets and converts its value-fields
     PacketRequest request;
@@ -77,15 +92,16 @@ int d2_send_request( D2Client* client, uint32_t id )
     memcpy(buffer + sizeof(uint32_t), &request.id, sizeof(uint32_t));
 
 //    // TODO: remove, debug
-//    uint16_t pack_type = ntohs(*((uint16_t*)buffer));
-//    uint16_t pack_empty = *((uint16_t*)(buffer + sizeof(uint16_t)));
-//    uint32_t pack_id = ntohl(*((uint32_t*)(buffer + 2 * sizeof(uint16_t))));
-//    printf("\n[ Before sending request, packet: ]\n");
-//    printf("pack type:\t"); printbits(&pack_type, sizeof(uint16_t));
-//    printf("pack empty:\t"); printbits(&pack_empty, sizeof(uint16_t));
-//    printf("pack id:\t"); printbits(&pack_id, sizeof(uint32_t));
-//    printf("[ Before sending request, packet: ]\n\n");
+    uint16_t pack_type = ntohs(*((uint16_t*)buffer));
+    uint16_t pack_empty = *((uint16_t*)(buffer + sizeof(uint16_t)));
+    uint32_t pack_id = ntohl(*((uint32_t*)(buffer + 2 * sizeof(uint16_t))));
+    printf("\n[ Before sending request, packet: ]\n");
+    printf("pack type:\t"); printbits(&pack_type, sizeof(uint16_t));
+    printf("pack empty:\t"); printbits(&pack_empty, sizeof(uint16_t));
+    printf("pack id:\t"); printbits(&pack_id, sizeof(uint32_t));
+    printf("[ Before sending request, packet: ]\n\n");
 
+    // sends the packet in the buffer
     int bytes_sent = d1_send_data(client->peer, buffer, REQUEST_SIZE);
     if (bytes_sent < 0) return 0;
     return 1;
@@ -114,10 +130,6 @@ int d2_recv_response_size( D2Client* client )
         PacketResponseSize *responseSize = (PacketResponseSize *)buffer;
         uint16_t packet_size = ntohs(responseSize->size);
 
-        // packet_size = how many NetNode structures that follows
-        // The following PacketResponses contains NetNode as payload
-        // netnode = (32 id, 32 val, 32 num, 32 child list)
-
         printf("%d: Received a ResponseSize of %d\n", getpid(), packet_size);
         return packet_size;
     }
@@ -141,7 +153,6 @@ int d2_recv_response( D2Client* client, char* buffer, size_t sz )
     uint16_t packet_type = ntohs(header->type);
 
     // check correct type
-    //TODO: or TPYE_LAST_RESPONSE ?
     if (packet_type == TYPE_RESPONSE || packet_type == TYPE_LAST_RESPONSE) {
 
         // cast to Response to retrieve data
@@ -159,10 +170,10 @@ int d2_recv_response( D2Client* client, char* buffer, size_t sz )
             node.id = *ptr++;
             node.value = *ptr++;
             node.num_children = *ptr++;
-            uint32_t nums = ntohl(node.num_children); // representing how many children
 
             // read in children-ids
-            for (int i = 0; i < nums; ++i) {
+            uint32_t nums = ntohl(node.num_children); // representing how many children
+            for (size_t i = 0; i < nums; ++i) {
                 node.child_id[i] = *ptr++;
             }
 
@@ -186,19 +197,12 @@ int d2_recv_response( D2Client* client, char* buffer, size_t sz )
             printf("Num_children:\t(%d)\t", ntohl(*bruh32));
             printbits(&(uint32_t){ntohl(*bruh32)}, sizeof(uint32_t));
             uint32_t children = ntohl(*bruh32++);
-            for (int i=0; i < children; i++) {
-                printf("Child %d:\t(%d)\t", i, ntohl(*bruh32));
+            for (size_t i=0; i < children; i++) {
+                printf("Child %zu:\t(%d)\t", i, ntohl(*bruh32));
                 printbits(&(uint32_t){ntohl(*bruh32++)}, sizeof(uint32_t));
             }
             printf("============================================================\n\n");
 //            //TODO: remove, debug
-
-//            char* payload = &buffer[sizeof(PacketResponse)];
-//            NetNode *net = (NetNode *)payload;
-//            printf("ID:\t\t"); printbits(&(uint16_t){ntohs(net->id)}, sizeof(uint32_t));
-//            printf("Value:\t(%d)\t", ntohs(net->value)); printbits(&(uint32_t){ntohs(net->value)}, sizeof(uint16_t));
-//            printf("Nums:\t(%d)\t", ntohs(net->num_children)); printbits(&(uint16_t){ntohs(net->num_children)}, sizeof(uint16_t));
-//
 
             // in case of success: returns bytes received
             return bytes_received;
