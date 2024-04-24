@@ -13,26 +13,13 @@
 
 #include "d1_udp.h"
 
-//TODO: debugging - remove
-//void printbits(void *n, int size) {
-//    char *num = (char *)n;
-//
-//    for (int i = size-1; i >= 0; i--) { // itererer gjennom bytes
-//        for (int j = 7; j >= 0; j--) {
-//            printf("%c", (num[i] & (1 << j)) ? '1' : '0');
-//        }
-//        printf(" ");
-//    }
-//    printf("\n");
-//}
-
 
 /**
  * Compute the checksum over the entire packet
  * @param header header-struct holding header-info
  * @param buffer payload
  * @param sz size of payload
- * @return
+ * @return checksum as 16-bit integer
  */
 uint16_t compute_checksum(D1Header header, const char* buffer, size_t sz) {
 
@@ -234,6 +221,11 @@ int d1_recv_data(struct D1Peer* peer, char* buffer, size_t sz)
     }
 }
 
+/**
+ * Sends an ACK-message for the given sequence number
+ * @param peer info about peer to send to
+ * @param seqno sequence number to acknowledge
+ */
 void d1_send_ack( struct D1Peer* peer, int seqno )
 {
     // ACKNO packet holder
@@ -260,8 +252,17 @@ void d1_send_ack( struct D1Peer* peer, int seqno )
     sendto(peer->socket, buffer, sz, 0, (struct sockaddr*)&(peer->addr), sizeof(peer->addr));
 }
 
-int  d1_wait_ack( D1Peer* peer, char* buffer, size_t sz ) {
-    char ack_buff[8]; // ack packages are 8 bytes, only header
+/**
+ * Waits for an ACK-message after sending a packet
+ * @param peer info about peer to send to
+ * @param buffer buffer to contain response in
+ * @param sz size of buffer
+ * @return 1 in case of success, -1 in case of failure
+ */
+int  d1_wait_ack( D1Peer* peer, char* buffer, size_t sz )
+{
+    // ack packages are 8 bytes, only header
+    char ack_buff[8];
     socklen_t sender_addr_len = sizeof(peer->addr);
 
     int bytes_received = recvfrom(peer->socket, ack_buff, sizeof(ack_buff), 0, (struct sockaddr*)&(peer->addr), &sender_addr_len);
@@ -272,6 +273,7 @@ int  d1_wait_ack( D1Peer* peer, char* buffer, size_t sz ) {
 
     printf("%d: Received %d bytes from %s\n", getpid(), bytes_received, inet_ntoa(peer->addr.sin_addr));
 
+    // extract header-info
     D1Header *ack_header = (D1Header *)ack_buff;
     uint16_t ack_flags = ntohs(ack_header->flags);
     uint16_t ack_checksum = ack_header->checksum;
@@ -306,13 +308,18 @@ int  d1_wait_ack( D1Peer* peer, char* buffer, size_t sz ) {
     }
 }
 
+/**
+ * Given a buffer and info about peer to send to,
+ * create a network packet for UDP and send packet containing header and payload
+ * @param peer info about peer to send to
+ * @param buffer containing payload to send over
+ * @param sz size of the given buffer
+ * @return bytes sent in case of success, -1 in case of failure
+ */
 int d1_send_data( D1Peer* peer, char* buffer, size_t sz )
 {
     // general error checks
     if (sz > 1016 || peer == NULL || buffer == NULL || sz == 0) return -1;
-
-    //TODO: remove
-//    printf("\n[>> Sending: '%.*s' <<]\n\n", (int)sz, buffer);
 
     // declares sizes
     const size_t PACKET_SIZE = (HEADER_SIZE + sz);
