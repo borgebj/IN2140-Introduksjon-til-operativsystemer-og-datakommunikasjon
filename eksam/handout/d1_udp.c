@@ -283,7 +283,7 @@ int  d1_wait_ack( D1Peer* peer, char* buffer, size_t sz ) {
     int correct_acnko = (ack_response == expected_seqno);
 
     if (ack_flags & FLAG_ACK) {
-        if (ack_size == bytes_received) { // size comparison
+        if ((int)ack_size == bytes_received) { // size comparison
             if (correct_acnko) {          // ack comparison
                 printf("%d: received frame with header %x %x %x, size correct - expected ack %d, advancing next seqno\n", getpid(), ack_flags, ack_size, ack_checksum, peer->next_seqno);
                 peer->next_seqno = (peer->next_seqno ? 0 : 1);
