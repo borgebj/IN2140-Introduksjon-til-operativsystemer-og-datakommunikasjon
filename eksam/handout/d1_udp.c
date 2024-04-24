@@ -143,6 +143,13 @@ int d1_get_peer_info( struct D1Peer* peer, const char* peername, uint16_t server
     return 1;
 }
 
+/**
+ * Receives data from server into buffer given
+ * @param peer to put info into
+ * @param buffer buffer to put received data into
+ * @param sz length of buffer
+ * @return payload size, else -1
+ */
 int d1_recv_data(struct D1Peer* peer, char* buffer, size_t sz)
 {
     if (sz < 8) return -1;
@@ -358,17 +365,6 @@ int d1_send_data( D1Peer* peer, char* buffer, size_t sz )
         perror("Error sending data");
         return -1;
     }
-
-    //TODO: remove
-//    printf("\n[ Sending - packet info ]\n");
-//    D1Header *test = (D1Header *)packet;
-//    test->flags = ntohs(test->flags); test->size = ntohl(test->size);
-//    printf("Flags\t\t(%x)\t", test->flags); printbits(&test->flags, sizeof(uint16_t));
-//    printf("Checksum\t(%x)\t", test->checksum); printbits(&test->checksum, sizeof(uint16_t));
-//    printf("Size\t\t(%d)\t", test->size); printbits(&test->size, sizeof(uint32_t));
-//    printf("Bytes sent:\t%d\n", bytes_sent);
-//    printf("Sending:\t'%.*s'\n", (int)sz, (char*)packet+sizeof(D1Header));
-//    printf("[ Sending - packet info ]\n\n");
 
     // waits for an ACK
     int res = d1_wait_ack(peer, buffer, sz);
