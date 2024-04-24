@@ -90,8 +90,8 @@ int d2_recv_response_size( D2Client* client )
     char buffer[MAX_PACKETSIZE];
 
     // receives the PacketResponseSize inside the buffer
-    int ret = d1_recv_data(client->peer, buffer, 1024);
-    if( ret < 0 ) {
+    int bytes_received = d1_recv_data(client->peer, buffer, 1024);
+    if( bytes_received < 0 ) {
         printf("Failed to receive data packet ...\n");
         return -1;
     }
@@ -223,6 +223,9 @@ int d2_add_to_local_tree( LocalTreeStore* nodes, int node_idx, char* buffer, int
         }
 
         // node is added to array-based tree, where ID represents index in array
+        printf("%d: As tree node %u add id %u val %u num_children %u ", getpid(), node_idx, node.id, node.value, node.num_children);
+        for (size_t i = 0; i < node.num_children; ++i) printf("%d ", node.child_id[i]);
+        printf("\n");
         nodes->nodes[node_idx++] = node;
     }
     return node_idx;
@@ -241,7 +244,6 @@ void print_recursive(NetNode *nodes, uint32_t node_id, int depth)
         for (int i = 0; i < depth; ++i) {
             printf("--");
         }
-        printf("-- ");
     }
     printf("id %d value %u children %d\n", nodes[node_id].id, nodes[node_id].value, nodes[node_id].num_children);
 
