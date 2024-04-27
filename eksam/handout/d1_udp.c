@@ -291,6 +291,7 @@ int  d1_wait_ack( D1Peer* peer, char* buffer, size_t sz )
     int expected_seqno = peer->next_seqno;
     int correct_acnko = (ack_response == expected_seqno);
 
+    printf("%d: testing if ACK (%x) is set in flags (%x)\n", getpid(), FLAG_ACK, ack_flags);
     if (ack_flags & FLAG_ACK) {
         if ((int)ack_size == bytes_received) { // size comparison
             if (correct_acnko) {          // ack comparison
