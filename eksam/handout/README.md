@@ -3,6 +3,7 @@
 <h3>How my implementation works</h3>
 
 <h4>D1</h4>
+
 * D1 works by first creating a client and providing it info through several network functions. 
 * gethostbyname was the choice i used to get ip from a hostname due to it being slightly easier than the alternative getaddrinfo
 
