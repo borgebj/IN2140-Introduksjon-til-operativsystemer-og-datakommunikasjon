@@ -50,5 +50,7 @@ foreach(source_file ${SOURCES})
             CBra/uke15/server.c
             CBra/uke15/common.h
             CBra/uke15/common.h
+            CBra/uke18/msn.c
+            CBra/uke18/chat.c
     )
 endforeach()
