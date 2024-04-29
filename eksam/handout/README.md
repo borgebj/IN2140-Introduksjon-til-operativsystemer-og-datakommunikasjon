@@ -26,4 +26,5 @@ Overall the program works by:
 
 <h3>Elements not included / not implemented</h3>
 - Everything according to the header-files and comments are implemented, and the program works when run.
+
 - In the case where a packet is received and the checksum or size is validated to be wrong, we send the opposite ack forcing sender to retransmit. After this ive called receive data again to capture this re-sent package. This might caucse unexpected results due to limitations of testing with a binary server, but code-wise it makes sense for it to work.
