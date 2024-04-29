@@ -225,7 +225,6 @@ int d1_recv_data(struct D1Peer* peer, char* buffer, size_t sz)
 
             // waits for re-sent package
             return d1_recv_data(peer, buffer, sz);
-            //TODO: double-check ?
         }
     }
     else {
