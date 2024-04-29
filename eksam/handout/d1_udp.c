@@ -207,17 +207,23 @@ int d1_recv_data(struct D1Peer* peer, char* buffer, size_t sz)
             memcpy(buffer, sendin_payload, PAYLOAD_SIZE);
 
             // gets seqno and sends an ack with same seqno
-            int seqno = (header.flags & SEQNO) ? 1 : 0;
-            d1_send_ack(peer, seqno);
+            int correct_seqno = (header.flags & SEQNO) ? 1 : 0;
+            d1_send_ack(peer, correct_seqno);
 
             // returns size of payload
             return PAYLOAD_SIZE;
         }
         else {
-            // checksum or size differs, send ack with opposite value
-            printf("%d: Incorrect %s ...\n", getpid(), (correct_size ? "checksum" : "size"));
-            int seqno = (header.flags & SEQNO) ? 0 : 1;
-            d1_send_ack(peer, seqno);
+            if (!correct_size)
+                printf("%d: Incorrect size, expeceted (%x) got (%x)\n", getpid(), ntohs(header.size), bytes_received);
+            else
+                printf("%d: Incorrect checksum, expected (%x) got (%x)\n", getpid(), computed_checksum, header.checksum);
+
+            // gets opposite seqno and sends ack indicating error
+            int opposite_seqno = (header.flags & SEQNO) ? 0 : 1;
+            d1_send_ack(peer, opposite_seqno);
+
+            // waits for re-sent package
             return d1_recv_data(peer, buffer, sz);
             //TODO: double-check ?
         }

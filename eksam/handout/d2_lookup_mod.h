@@ -7,6 +7,10 @@
 
 #include "d1_udp.h"
 
+#define MAX_PACKETSIZE 1024
+#define REQUEST_SIZE 64
+
+
 struct D2Client
 {
     D1Peer* peer;

@@ -9,8 +9,6 @@
 
 #include "d2_lookup.h"
 
-#define REQUEST_SIZE 64
-
 
 /**
  * Creates information required to use server with given name and port
@@ -47,8 +45,12 @@ D2Client* d2_client_create( const char* server_name, uint16_t server_port )
  */
 D2Client* d2_client_delete( D2Client* client )
 {
-    d1_delete(client->peer);
-    free(client);
+    if (client != NULL) {
+        if (client->peer != NULL) {
+            d1_delete(client->peer);
+        }
+        free(client);
+    }
     return NULL;
 }
 
@@ -69,21 +71,26 @@ int d2_send_request( D2Client* client, uint32_t id )
     // creates PacketRequest, sets and converts its value-fields
     PacketRequest request;
     request.type = htons(TYPE_REQUEST);
-    uint16_t empty = 0;
+    uint16_t unused = 0;
     request.id = htonl(id);
 
     // create the packet to be sent over network
-    char buffer[REQUEST_SIZE];
-    memcpy(buffer, &request.type, sizeof(uint16_t));
-    memcpy(buffer + sizeof(uint16_t), &empty, sizeof(uint16_t));
-    memcpy(buffer + sizeof(uint32_t), &request.id, sizeof(uint32_t));
+    char packet[REQUEST_SIZE];
+    memcpy(packet, &request.type, sizeof(uint16_t));
+    memcpy(packet + sizeof(uint16_t), &unused, sizeof(uint16_t));
+    memcpy(packet + sizeof(uint32_t), &request.id, sizeof(uint32_t));
 
     // sends the packet in the buffer
-    int bytes_sent = d1_send_data(client->peer, buffer, REQUEST_SIZE);
+    int bytes_sent = d1_send_data(client->peer, packet, REQUEST_SIZE);
     if (bytes_sent < 0) return 0;
     return 1;
 }
 
+/**
+ * Waits and receives a response size from server
+ * @param client containing info about peer
+ * @return packet size on success, -1 on error
+ */
 int d2_recv_response_size( D2Client* client )
 {
     // buffer for receiving response
@@ -122,7 +129,7 @@ int d2_recv_response_size( D2Client* client )
  * @param client
  * @param buffer
  * @param sz
- * @return
+ * @return bytes received on success, -1 on error
  */
 int d2_recv_response( D2Client* client, char* buffer, size_t sz )
 {
@@ -200,7 +207,7 @@ void  d2_free_local_tree( LocalTreeStore* nodes )
  * @param node_idx
  * @param buffer payload containing bytes with node-info
  * @param buflen the length of the payload
- * @return
+ * @return index of node
  */
 int d2_add_to_local_tree( LocalTreeStore* nodes, int node_idx, char* buffer, int buflen )
 {
@@ -257,7 +264,7 @@ void print_recursive(NetNode *nodes, uint32_t node_id, int depth)
  * Prints the tree using recursion
  * @param nodes_out tree
  */
-void d2_print_tree( LocalTreeStore* nodes_out )
+void d2_print_tree(LocalTreeStore* nodes_out)
 {
     // Prints the root
     printf("id %d value %u children %d\n", nodes_out->nodes[0].id, nodes_out->nodes[0].value, nodes_out->nodes[0].num_children);
@@ -267,40 +274,3 @@ void d2_print_tree( LocalTreeStore* nodes_out )
         print_recursive(nodes_out->nodes, nodes_out->nodes[0].child_id[i], 1);
     }
 }
-
-// DFS print
-///**
-// * Prints the tree using a DFS approach
-// * @param nodes_out  tree
-// */
-//void d2_print_tree(LocalTreeStore* nodes_out)
-//{
-//    int max_children = nodes_out->number_of_nodes;
-//
-//    // stack for DFS
-//    NetNode* stack[max_children];
-//    int stack_depth[max_children];
-//    int stack_top = 0;
-//
-//    // Push root onto the stack
-//    stack[stack_top] = &nodes_out->nodes[0];
-//    stack_depth[stack_top++] = 0;
-//
-//    while (stack_top > 0) {
-//        // Pop the top node from the stack
-//        NetNode* current_node = stack[--stack_top];
-//        int depth = stack_depth[stack_top];
-//
-//        // Print the current node
-//        for (int i = 0; i < depth; ++i) {
-//            printf("--");
-//        }
-//        printf(" id %d value %u children %d\n", current_node->id, current_node->value, current_node->num_children);
-//
-//        // Push children onto the stack in reverse order
-//        for (int i = current_node->num_children - 1; i >= 0; --i) {
-//            stack[stack_top] = &nodes_out->nodes[current_node->child_id[i]];
-//            stack_depth[stack_top++] = depth + 1;
-//        }
-//    }
-//}
