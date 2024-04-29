@@ -20,6 +20,7 @@ Overall the program works by:
 - This goes back and forth twice, until "disconnect" is received by server, in which case both stop
 
 <h4>Checksum calculation</h4>
+
 - Checksum is calculated in the d1_udp.c 
 - The checksum calculator takes in a header and a payload together with its size, and iterates through both by casting it to 16 bit, then XOR'ing each part.
 - There is also a check if the payload is uneven. In cases where the payload is uneven, e.g. odd number of letters in a string, a null-byte padding is added as to not ruin the checksum computation but still maintain 16-bit xor parts.
