@@ -1,6 +1,6 @@
-<h2> IN2140 - Exam </h2>
+<h2> IN2140 - Home Exam </h2>
 
-<h3>**How my implementation works**</h3>
+<h3>How my implementation works</h3>
 
 * D1 works by first creating a client and providing it info through several network functions. 
 * gethostbyname was the choice i used to get ip from a hostname due to it being slightly easier than the alternative getaddrinfo
@@ -24,6 +24,6 @@ Overall the program works by:
 - The checksum calculator takes in a header and a payload together with its size, and iterates through both by casting it to 16 bit, then XOR'ing each part.
 - There is also a check if the payload is uneven. In cases where the payload is uneven, e.g. odd number of letters in a string, a null-byte padding is added as to not ruin the checksum computation but still maintain 16-bit xor parts.
 
-<h3>**Elements not included / not implemented**</h3>
+<h3>Elements not included / not implemented</h3>
 - Everything according to the header-files and comments are implemented, and the program works when run.
 - In the case where a packet is received and the checksum or size is validated to be wrong, we send the opposite ack forcing sender to retransmit. After this ive called receive data again to capture this re-sent package. This might caucse unexpected results due to limitations of testing with a binary server, but code-wise it makes sense for it to work.
