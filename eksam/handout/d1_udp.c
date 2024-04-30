@@ -71,17 +71,24 @@ D1Peer* d1_create_client( )
     // creates the UDP socket
     int sockfd;
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sockfd == -1) return NULL;
+    if (sockfd == -1) {
+        perror("Failed to create socket");
+        return NULL;
+    }
 
     // allocates space on heap for D1Peer, which is assigned socket and returned
     D1Peer* client = malloc(sizeof(D1Peer));
-    if (client != NULL) {
-        client->socket = sockfd;
-        memset(&(client->addr), 0, sizeof(struct sockaddr_in)); // initialized to 0
-        client->next_seqno = 0; // initialized to 0
-        return client;
+    if (client == NULL) {
+        perror("Failed to allocate memory for D1Peer");
+        close(sockfd);
+        return NULL;
     }
-    return NULL;
+
+    client->socket = sockfd;
+    memset(&client->addr, 0, sizeof(struct sockaddr_in)); // initialized to 0
+    client->next_seqno = 0; // initialized to 0
+
+    return client;
 }
 
 /**
@@ -116,6 +123,7 @@ int d1_get_peer_info( struct D1Peer* peer, const char* peername, uint16_t server
     // convert to IP address if not in dotted
     int wc = inet_pton(AF_INET, peername, &ip_addr.s_addr);
     if (wc == 0) {
+
         // if dotted, get host by name through hostent struct
         struct hostent *host = gethostbyname(peername);
         if (host == NULL) {
@@ -137,7 +145,7 @@ int d1_get_peer_info( struct D1Peer* peer, const char* peername, uint16_t server
     addr.sin_addr = ip_addr;
 
     // fills the peer with new structure containing IP
-    memcpy(&(peer->addr), &addr, sizeof(addr));
+    memcpy(&peer->addr, &addr, sizeof(addr));
 
     printf("%d: We have resolved server name %s\n", getpid(), peername);
     return 1;
@@ -174,6 +182,7 @@ int d1_recv_data(struct D1Peer* peer, char* buffer, size_t sz)
 
     // extract header info
     D1Header header;
+    memset(&header, 0, sizeof(D1Header));
     memcpy(&header.flags, buffer, sizeof(uint16_t));
     memcpy(&header.checksum, buffer + sizeof(uint16_t), sizeof(uint16_t));
     memcpy(&header.size, buffer + sizeof(uint32_t), sizeof(uint32_t));
@@ -248,6 +257,7 @@ void d1_send_ack( struct D1Peer* peer, int seqno )
     uint16_t flags = 0;
     uint32_t size = 8; // ACKNO size is always 8
 
+    // set flags appropriate to  ack-message
     flags |= FLAG_ACK;
     if (seqno == 1) flags |= ACKNO;
 
