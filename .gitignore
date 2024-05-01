@@ -8,3 +8,4 @@
 cmake
 cmake-build-debug
 .idea
+*zip
