@@ -84,9 +84,10 @@ D1Peer* d1_create_client( )
         return NULL;
     }
 
+    // initializes client-values
     client->socket = sockfd;
-    memset(&client->addr, 0, sizeof(struct sockaddr_in)); // initialized to 0
-    client->next_seqno = 0; // initialized to 0
+    memset(&client->addr, 0, sizeof(struct sockaddr_in));  // initialized to 0
+    client->next_seqno = 0;                                         // initialized to 0
 
     return client;
 }
@@ -98,7 +99,7 @@ D1Peer* d1_create_client( )
  */
 D1Peer* d1_delete( D1Peer* peer )
 {
-    // if non-NULL, close socket and free memory
+    // if peer exists (not NULL), close socket and free memory
     if (peer != NULL) {
         if (peer->socket != -1) { // shouldn't happen, but just in case
             close(peer->socket);
