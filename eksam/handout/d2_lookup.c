@@ -21,13 +21,14 @@ D2Client* d2_client_create( const char* server_name, uint16_t server_port )
     D2Client *client = malloc(sizeof(D2Client));
     if (client != NULL) {
         D1Peer *peer = d1_create_client();
-        if ( !peer ) {
+        if (!peer) {
             printf( "Failed to create D1 client.\n" );
             return NULL;
         }
 
-        int ret = d1_get_peer_info(peer, server_name, server_port);
-        if( ret == 0 ) {
+        // fill client with info using d1 get info
+        int res = d1_get_peer_info(peer, server_name, server_port);
+        if (res == 0) {
             printf( "Failed to resolve the name for %s:%d\n", server_name, server_port);
             d1_delete(peer);
             return NULL;
@@ -64,7 +65,7 @@ D2Client* d2_client_delete( D2Client* client )
 int d2_send_request( D2Client* client, uint32_t id )
 {
     if (id <= 1000) {
-        printf("ID must be >1000 ...\n");
+        printf("Error: ID must be >1000\n");
         return -1;
     }
 
@@ -231,7 +232,9 @@ int d2_add_to_local_tree( LocalTreeStore* nodes, int node_idx, char* buffer, int
 
         // node is added to array-based tree, where ID represents index in array
         printf("%d: As tree node %u add id %u val %u num_children %u ", getpid(), node_idx, node.id, node.value, node.num_children);
-        for (size_t i = 0; i < node.num_children; ++i) printf("%d ", node.child_id[i]);
+        for (size_t i = 0; i < node.num_children; ++i) {
+            printf("%d ", node.child_id[i]);
+        }
         printf("\n");
         nodes->nodes[node_idx++] = node;
     }
@@ -244,7 +247,7 @@ int d2_add_to_local_tree( LocalTreeStore* nodes, int node_idx, char* buffer, int
  * @param node_id ID of current node
  * @param depth depth to base print on, more depth = more "--"
  */
-void print_recursive(NetNode *nodes, uint32_t node_id, int depth)
+void print_node(NetNode *nodes, uint32_t node_id, int depth)
 {
     // depth is represented by several more "--" before node info
     if (depth > 0) {
@@ -256,7 +259,7 @@ void print_recursive(NetNode *nodes, uint32_t node_id, int depth)
 
     // recursively go through each child of the current node
     for (size_t i = 0; i < nodes[node_id].num_children; ++i) {
-        print_recursive(nodes, nodes[node_id].child_id[i], depth + 1);
+        print_node(nodes, nodes[node_id].child_id[i], depth + 1);
     }
 }
 
@@ -266,11 +269,11 @@ void print_recursive(NetNode *nodes, uint32_t node_id, int depth)
  */
 void d2_print_tree(LocalTreeStore* nodes_out)
 {
-    // Prints the root
+    // Prints the root, index 0
     printf("id %d value %u children %d\n", nodes_out->nodes[0].id, nodes_out->nodes[0].value, nodes_out->nodes[0].num_children);
 
     // starts the recursive descent from the root node
     for (size_t i = 0; i < nodes_out->nodes[0].num_children; ++i) {
-        print_recursive(nodes_out->nodes, nodes_out->nodes[0].child_id[i], 1);
+        print_node(nodes_out->nodes, nodes_out->nodes[0].child_id[i], 1);
     }
 }
