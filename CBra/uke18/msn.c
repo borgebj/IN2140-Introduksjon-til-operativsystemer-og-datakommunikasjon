@@ -88,7 +88,7 @@ int main(int argc, char const *argv[]) {
      *      - Lytte til tastaturet, kommer en melding fra bruker?
      */
 
-    printf("Welcome to MSN! Type stuff to your anonymous friend:\n");
+    printf("\nWelcome to MSN! Type stuff to your anonymous friend, type 'q' to quit:\n");
 
     buf[0] = 0;
     while (strcmp(buf, "q")) {

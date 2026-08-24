@@ -1,0 +1,14 @@
+
+Basic UDP protokol for kommunisering over nettverk.
+
+Hvordan gjøre klart:
+- Alt trenger å kompileres før det kjøres, derfor brukes en "Makefile" for å automatisk kompilere klart filer.
+- Dette gjøres ved å kjøre 'make all' i terminalen på pcen i mappen med filene.
+- ZIP-filen skal komme med filene allerede kompilert så dette er unødvendig.
+
+For å kjøre:
+- kjøring består av 2 hoved-filer 
+1. 'd1_test_client'
+2. 'd2_test_client'
+
+- begge er testfiler 

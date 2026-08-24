@@ -1,0 +1,32 @@
+
+nb: trenger kanskje å installere en del ting for å kunne kjøre C, så ignorer dette og bare se videoen.
+
+
+
+
+For å klargjøre:
+
+- Kompilere filen vha kommandoen 'make all' i terminalen.
+> lager en binær-fil kalt 'msn'
+
+- funker ikke, bruk: 'gcc msn.c -o msn'
+> kompilerer c-kode (gcc) for filnavn (msn.c) med navn (msn)
+
+- Kan hende dette er unødvendig, siden fil ligger med i zippen.
+
+
+For å kjøre:
+
+- Trenger 2 terminal-vinduer:
+> kan bruke shift + høyreklikk, og åpne i powershell/linux shell
+> i addresse i filutforsker, fjern og skriv 'cmd'
+
+instruksjoner:
+1. Hent ip-addresse
+	linux:   'hostname -i'
+	windows: 'ipconfig' ?
+
+2. skrive i terminal 1 : './msn 1234 4321 <ip>'
+3. skrive i terminal 2 : './msn 4321 1234 <ip>'      
+
+- 1234 og 4321 er vilkårlige port-nummer, kan være hva som helst
